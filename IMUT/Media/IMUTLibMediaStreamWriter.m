@@ -25,7 +25,11 @@ static dispatch_queue_t finalizationDispatchQueue;
 }
 
 + (void)initialize {
-    finalizationDispatchQueue = makeDispatchQueue(@"media_stream_writer_finalizer", DISPATCH_QUEUE_CONCURRENT, DISPATCH_QUEUE_PRIORITY_DEFAULT);
+    finalizationDispatchQueue = makeDispatchQueue(
+        @"media_stream_writer_finalizer",
+        DISPATCH_QUEUE_CONCURRENT,
+        DISPATCH_QUEUE_PRIORITY_DEFAULT
+    );
 }
 
 + (id)writerWithBasename:(NSString *)basename {
@@ -69,14 +73,14 @@ static dispatch_queue_t finalizationDispatchQueue;
 - (void)addMediaSourceWithEncoder:(id <IMUTLibMediaEncoder>)encoder {
     switch (encoder.mediaSourceType) {
         case IMUTLibMediaSourceTypeAudio:
-            NSAssert(self.hasAudioTrack == NO, @"cannot replace audio media source");
+            NSAssert(!self.hasAudioTrack, @"cannot replace audio media source");
 
             _audioEncoder = encoder;
 
             break;
 
         case IMUTLibMediaSourceTypeVideo:
-            NSAssert(self.hasVideoTrack == NO, @"cannot replace video media source");
+            NSAssert(!self.hasVideoTrack, @"cannot replace video media source");
 
             _videoEncoder = encoder;
     }
@@ -93,13 +97,11 @@ static dispatch_queue_t finalizationDispatchQueue;
             IMUTLibMediaFileFinalizer *finalizer = [IMUTLibMediaFileFinalizer finalizerWithAssetWriter:_currentAVAssetWriter];
 
             if (async) {
-                dispatch_async(finalizationDispatchQueue, ^() {
-                    [finalizer finalizeMediaFileWithCompletionHandler:^{
-                    }];
+                dispatch_async(finalizationDispatchQueue, ^{
+                    [finalizer finalizeMediaFileWithCompletionHandler:^{}];
                 });
             } else {
-                [finalizer finalizeMediaFileWithCompletionHandler:^{
-                }];
+                [finalizer finalizeMediaFileWithCompletionHandler:^{}];
             }
 
             // Free some memory

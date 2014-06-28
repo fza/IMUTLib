@@ -119,22 +119,19 @@
     double bitRateFactor = [(NSNumber *) _config[kIMUTLibScreenModuleConfigUseLowResolution] boolValue] ? 3.2 : 8.0;
     int avgBitrate = (int) ceil(width * height * bitRateFactor);
 
-    NSMutableDictionary *compressionProps = [videoSettings objectForKey:AVVideoCompressionPropertiesKey];
-    [compressionProps addEntriesFromDictionary:[NSDictionary dictionaryWithObjectsAndKeys:
-                                                                 [NSNumber numberWithInteger:avgBitrate], AVVideoAverageBitRateKey,
-                                                                 nil
-    ]];
+    [videoSettings addEntriesFromDictionary:@{
+        AVVideoWidthKey:@(width),
+        AVVideoHeightKey:@(height)
+    }];
 
-    [videoSettings addEntriesFromDictionary:[NSDictionary dictionaryWithObjectsAndKeys:
-                                                              [NSNumber numberWithInteger:width], AVVideoWidthKey,
-                                                              [NSNumber numberWithInteger:height], AVVideoHeightKey,
-                                                              nil
-    ]];
+    [[videoSettings objectForKey:AVVideoCompressionPropertiesKey] addEntriesFromDictionary:@{
+        AVVideoAverageBitRateKey:@(avgBitrate),
+    }];
 }
 
 - (void)encoder:(IMUTLibMediaFrameBasedVideoEncoder *)encoder bufferAttributes:(NSMutableDictionary *)bufferAttributes {
     [bufferAttributes addEntriesFromDictionary:@{
-        (__bridge NSString *) kCVPixelBufferPixelFormatTypeKey : [NSNumber numberWithUnsignedInt:kCVPixelFormatType_32BGRA]
+        (__bridge NSString *) kCVPixelBufferPixelFormatTypeKey : @(kCVPixelFormatType_32BGRA)
     }];
 }
 
@@ -148,7 +145,8 @@
     if (self = [super init]) {
         // Ensure iOS 7+
         NSAssert(
-                class_respondsToSelector([UIView class], @selector(drawViewHierarchyInRect:afterScreenUpdates:)),
+                class_respondsToSelector([UIView class], @
+                selector(drawViewHierarchyInRect:afterScreenUpdates:)),
                 @"Platform does not respond to `drawViewHierarchyInRect:afterScreenUpdates:` on `UIView` instances. Cannot record the screen. Abort."
             );
 

@@ -30,3 +30,6 @@
 - (id)userInfo;
 
 @end
+
+// Convenience function
+IMUTLibTimer *repeatingTimer(NSTimeInterval timeInterval, id target, SEL selector, dispatch_queue_t dispatchQueue);

@@ -1,6 +1,9 @@
 #import "IMUTLibMain+Internal.h"
 #import "IMUTLibSyncLogPacket.h"
-#import "IMUTLibUtil.h"
+#import "IMUTLibFunctions.h"
+
+static NSString *kParamAbsoluteDateTime = @"abs-date-time";
+static NSString *kParamTimeSourceInfo = @"time-source";
 
 @interface IMUTLibSyncLogPacket ()
 
@@ -23,20 +26,14 @@ DESIGNATED_INIT
     return [[self alloc] initWithSyncDate:startDate timeSourceInfo:timeSourceInfo];
 }
 
-- (NSDictionary *)dictionaryWithSessionId:(NSString *)sessionId packetSequenceNumber:(unsigned long)sequenceNumber {
-    NSMutableDictionary *dictionary = [self baseDictionaryWithSessionId:sessionId
-                                                         sequenceNumber:sequenceNumber];
-
-    dictionary[@"abs-time"] = [IMUTLibUtil iso8601StringFromDate:self.syncDate];
-
-    if (self.timeSourceInfo) {
-        dictionary[@"time-source"] = self.timeSourceInfo;
-    }
-
-    [dictionary addEntriesFromDictionary:_additionalParameters];
-
-    return dictionary;
+- (NSDictionary *)parameters {
+    return @{
+        kParamAbsoluteDateTime : iso8601StringFromDate(self.syncDate),
+        kParamTimeSourceInfo : self.timeSourceInfo
+    };
 }
+
+#pragma mark Private
 
 - (instancetype)initWithSyncDate:(NSDate *)syncDate timeSourceInfo:(NSString *)timeSourceInfo {
     if (self = [super init]) {

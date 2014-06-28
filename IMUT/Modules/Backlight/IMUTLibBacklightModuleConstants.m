@@ -1,5 +1,3 @@
-
-
 // Module key
 NSString *const kIMUTLibBacklightModule = @"backlight";
 

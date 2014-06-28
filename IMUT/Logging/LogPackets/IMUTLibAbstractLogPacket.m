@@ -2,6 +2,10 @@
 #import "IMUTLibConstants.h"
 #import "Macros.h"
 
+static NSString *kParamType = @"type";
+static NSString *kParamSessionId = @"sid";
+static NSString *kParamSequenceNumber = @"seq";
+
 @implementation IMUTLibAbstractLogPacket
 
 - (instancetype)init {
@@ -17,17 +21,23 @@
 }
 
 - (NSDictionary *)dictionaryWithSessionId:(NSString *)sessionId packetSequenceNumber:(unsigned long)sequenceNumber {
-    MethodNotImplementedException(@"dictionaryWithSessionId:packetSequenceNumber:");
+    NSMutableDictionary *dictionary = [self baseDictionaryWithSessionId:sessionId sequenceNumber:sequenceNumber];
+    [dictionary addEntriesFromDictionary:[self parameters]];
+    [dictionary addEntriesFromDictionary:_additionalParameters];
+
+    return dictionary;
 }
 
 - (NSMutableDictionary *)baseDictionaryWithSessionId:(NSString *)sessionId sequenceNumber:(unsigned long)sequenceNumber {
-    NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
+    return $MD(@{
+        kParamType : [self stringFromLogPacketType:[self logPacketType]],
+        kParamSessionId : sessionId,
+        kParamSequenceNumber : @(sequenceNumber)
+    });
+}
 
-    dictionary[@"type"] = [self stringFromLogPacketType:[self logPacketType]];
-    dictionary[@"sid"] = sessionId;
-    dictionary[@"seq"] = [NSNumber numberWithLong:sequenceNumber];
-
-    return dictionary;
+- (NSDictionary *)parameters {
+    MethodNotImplementedException(@"parameters");
 }
 
 - (void)setAdditionalParameters:(NSDictionary *)parameters {
@@ -35,8 +45,6 @@
 }
 
 - (NSString *)stringFromLogPacketType:(IMUTLibLogPacketType)logPacketType {
-    static NSString *kUnknown = @"unknown";
-
     switch (logPacketType) {
         case IMUTLibLogPacketTypeSessionInit:
             return kIMUTLibLogPacketTypeSessionInit;
@@ -46,6 +54,9 @@
 
         case IMUTLibLogPacketTypeEvents:
             return kIMUTLibLogPacketTypeEvents;
+
+        case IMUTLibLogPacketTypeFinalize:
+            return kIMUTLibLogPacketTypeFinalize;
 
         default:
             // Never return nil

@@ -5,6 +5,7 @@
 #import "IMUTLibConstants.h"
 #import "IMUTLibMain.h"
 #import "IMUTLibUtil.h"
+#import "IMUTLibFunctions.h"
 
 @implementation IMUTLibScreenModule {
     IMUTLibUIWindowRecorder *_recorder;
@@ -78,8 +79,8 @@
 }
 
 - (NSTimeInterval)intervalSinceClockStart {
-    if(_recorder.dateOfFirstFrame) {
-        return [IMUTLibUtil uptime] - _referenceTime;
+    if (_recorder.dateOfFirstFrame) {
+        return uptime() - _referenceTime;
     }
 
     return 0;
@@ -90,11 +91,11 @@
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
     if (object == _recorder.mediaEncoder && [keyPath isEqualToString:@"dateOfFirstFrame"]) {
         if (!_recorder.dateOfFirstFrame) {
-            [self.timeSourceDelegate clockDidStop];
+            [self.timeSourceDelegate clockDidStopAfterTimeInterval:(uptime() - _referenceTime)];
             _referenceTime = 0;
         } else {
             [self.timeSourceDelegate clockDidStartAtDate:change[@"new"]];
-            _referenceTime = [IMUTLibUtil uptime];
+            _referenceTime = uptime();
         }
     }
 }

@@ -38,9 +38,15 @@ NSString *const kIMUTLibDeltaEntityTypeUnknown = @"unknown";
 NSString *const kIMUTLibLogPacketTypeSessionInit = @"session-init";
 NSString *const kIMUTLibLogPacketTypeSync = @"sync";
 NSString *const kIMUTLibLogPacketTypeEvents = @"events";
+NSString *const kIMUTLibLogPacketTypeFinalize = @"finalize";
 
 
 // Misc constants
+NSString* const kkUnknown = @"unknown";
+NSString *const kSessionId = @"sessionId";
+NSString *const kTimeSource = @"timeSource";
+NSString *const kStartDate = @"startDate";
+NSString *const kSessionDuration = @"sessionDuration";
 NSString *const kIMUTLibInitialEventsPacket = @"initial";
 NSString *const kIMUTNextSortingNumber = @"nextSortingNumber";
 NSString *const IMUTLibDefaultPlistFilename = @"IMUT.plist";

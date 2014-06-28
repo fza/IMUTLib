@@ -4,7 +4,7 @@
 @interface IMUTLibSession : NSObject <IMUTLibTimeSourceDelegate>
 
 // The id string of this session
-@property(nonatomic, readonly, retain) NSString *sid;
+@property(nonatomic, readonly, retain) NSString *sessionId;
 
 // The backing time source
 @property(nonatomic, readonly, weak) id <IMUTLibTimeSource> timeSource;

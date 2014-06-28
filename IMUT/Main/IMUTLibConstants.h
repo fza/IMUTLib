@@ -32,13 +32,20 @@ NSString *const kIMUTLibDeltaEntityTypeMixed;
 NSString *const kIMUTLibDeltaEntityTypeOther;
 NSString *const kIMUTLibDeltaEntityTypeUnknown;
 
+
 // Log packet type keys
 NSString *const kIMUTLibLogPacketTypeSessionInit;
 NSString *const kIMUTLibLogPacketTypeSync;
 NSString *const kIMUTLibLogPacketTypeEvents;
+NSString *const kIMUTLibLogPacketTypeFinalize;
 
 
 // Misc constants
+NSString* const kUnknown;
+NSString *const kSessionId;
+NSString *const kTimeSource;
+NSString *const kStartDate;
+NSString *const kSessionDuration;
 NSString *const kIMUTLibInitialEventsPacket;
 NSString *const kIMUTNextSortingNumber;
 NSString *const IMUTLibDefaultPlistFilename;

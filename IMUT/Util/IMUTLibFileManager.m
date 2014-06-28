@@ -59,7 +59,7 @@ static NSCache *sequenceNumberCache;
     }
 
     NSFileManager *fileManager = [NSFileManager defaultManager];
-    NSString *startNameWithString = session.sid;
+    NSString *startNameWithString = session.sessionId;
     NSNumber *sortingNumber = session.sortingNumber;
     NSString *firstNamePart = [NSString stringWithFormat:@"%@_%@_%@", sortingNumber, startNameWithString, basename];
     NSString *filename = [NSString stringWithFormat:@"%@.%@", firstNamePart, extension];

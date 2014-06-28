@@ -4,7 +4,7 @@
 
 - (void)clockDidStartAtDate:(NSDate *)startDate;
 
-- (void)clockDidStop;
+- (void)clockDidStopAfterTimeInterval:(NSTimeInterval)timeInterval;
 
 @end
 

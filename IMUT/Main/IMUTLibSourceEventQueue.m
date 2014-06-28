@@ -19,7 +19,7 @@ static dispatch_queue_t sourceEventCollectorDispatchQueue;
 SINGLETON
 
 + (void)initialize {
-    sourceEventCollectorDispatchQueue = makeDispatchQueue(@"source_event_queue", DISPATCH_QUEUE_SERIAL, DISPATCH_QUEUE_PRIORITY_DEFAULT);
+    sourceEventCollectorDispatchQueue = makeDispatchQueue(@"source_event_queue", DISPATCH_QUEUE_SERIAL, DISPATCH_QUEUE_PRIORITY_HIGH);
 
     [[NSNotificationCenter defaultCenter] addObserver:[self sharedInstance]
                                              selector:@selector(synchronizerDidStart)

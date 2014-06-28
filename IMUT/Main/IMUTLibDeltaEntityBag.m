@@ -1,14 +1,19 @@
-#import "IMUTLibDeltaEntityCache.h"
+#import "IMUTLibDeltaEntityBag.h"
 
-@interface IMUTLibDeltaEntityCache ()
+@interface IMUTLibDeltaEntityBag ()
 
 - (NSMutableDictionary *)backStore;
 
+- (instancetype)initWithBackStore:(NSMutableDictionary *)store;
+
 @end
 
-@implementation IMUTLibDeltaEntityCache {
+@implementation IMUTLibDeltaEntityBag {
     NSMutableDictionary *_store;
 }
+
+@dynamic all;
+@dynamic count;
 
 - (instancetype)init {
     if (self = [super init]) {
@@ -26,7 +31,7 @@
     return _store.count;
 }
 
-- (void)mergeWithCache:(IMUTLibDeltaEntityCache *)cache {
+- (void)mergeWithCache:(IMUTLibDeltaEntityBag *)cache {
     [_store addEntriesFromDictionary:[cache backStore]];
 }
 
@@ -46,10 +51,26 @@
     return _store[key];
 }
 
+- (void)reset {
+    _store = [NSMutableDictionary dictionary];
+}
+
+- (instancetype)copy {
+    return [[[self class] alloc] initWithBackStore:[_store copy]];
+}
+
 #pragma mark Private
 
 - (NSMutableDictionary *)backStore {
     return _store;
+}
+
+- (instancetype)initWithBackStore:(NSMutableDictionary *)store {
+    if (self = [super init]) {
+        _store = store;
+    }
+
+    return self;
 }
 
 @end

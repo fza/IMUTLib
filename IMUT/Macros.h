@@ -2,18 +2,18 @@
 #import <Foundation/Foundation.h>
 
 // Main logging facility
-#define IMUTLogMain(...) NSLog(@"*** IMUT *** %@", [NSString stringWithFormat:__VA_ARGS__])
+#define IMUTLogMain(...) NSLog(@"*** IMUT *** %@", [NSString stringWithFormat:__VA_ARGS__]);
 
 // Standard logging facility
-#define IMUTLog(...) NSLog(@"[%@] %@", NSStringFromClass([self class]), [NSString stringWithFormat:__VA_ARGS__])
-#define IMUTLogC(...) NSLog(@"[%@] %@", [NSString stringWithUTF8String:__FUNCTION__], [NSString stringWithFormat:__VA_ARGS__])
+#define IMUTLog(...) NSLog(@"[%@] %@", NSStringFromClass([self class]), [NSString stringWithFormat:__VA_ARGS__]);
+#define IMUTLogC(...) NSLog(@"[%@] %@", [NSString stringWithUTF8String:__FUNCTION__], [NSString stringWithFormat:__VA_ARGS__]);
 
 // Debug logging facility
 #ifdef DEBUG
-    #define IMUTLogDebug(...) IMUTLog(__VA_ARGS__)
-    #define IMUTLogDebugC(...) IMUTLogC(__VA_ARGS__)
-    #define IMUTLogDebugModule(moduleName, ...) IMUTLogDebug(@"Module \"%@\": %@", moduleName, [NSString stringWithFormat:__VA_ARGS__])
-    #define IMUTLogDebugModuleDirect(...) IMUTLogDebug(@"Module \"%@\": %@", [[self class] moduleName], [NSString stringWithFormat:__VA_ARGS__])
+#define IMUTLogDebug(...) IMUTLog(__VA_ARGS__);
+#define IMUTLogDebugC(...) IMUTLogC(__VA_ARGS__);
+#define IMUTLogDebugModule(moduleName, ...) IMUTLogDebug(@"Module \"%@\": %@", moduleName, [NSString stringWithFormat:__VA_ARGS__]);
+#define IMUTLogDebugModuleDirect(...) IMUTLogDebug(@"Module \"%@\": %@", [[self class] moduleName], [NSString stringWithFormat:__VA_ARGS__]);
 #else
     #define IMUTLogDebug(...)
     #define IMUTLogDebugC(...)
@@ -21,8 +21,17 @@
     #define IMUTLogDebugModuleDirect(...)
 #endif
 
-// NSSet literal $(...)
+// Immutable NSSet literal $(...)
 #define $(...) [NSSet setWithObjects:__VA_ARGS__, nil]
+
+// Mutable NSSet literal
+#define $MS(...) [NSMutableSet setWithSet:__VA_ARGS__]
+
+// Mutable dictionary literal
+#define $MD(...) [NSMutableDictionary dictionaryWithDictionary:__VA_ARGS__]
+
+// Mutable array literal
+#define $MA(...) [NSMutableArray arrayWithArray:__VA_ARGS__]
 
 // Make bundle identifier strings
 #define BUNDLE_IDENTIFIER_CONCAT(STRING) @ BUNDLE_IDENTIFIER @"." @ STRING

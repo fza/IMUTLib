@@ -9,7 +9,9 @@
 
 @property(nonatomic, readwrite, retain) NSString *basename;
 
-- (id)initWithBasename:(NSString *)basename sessionId:(NSString *)sessionId packetEncoder:(id <IMUTLibLogPacketStreamEncoder>)encoder;
+- (id)initWithBasename:(NSString *)basename
+             sessionId:(NSString *)sessionId
+         packetEncoder:(id <IMUTLibLogPacketStreamEncoder>)encoder;
 
 - (NSFileHandle *)fileHandle;
 
@@ -37,18 +39,6 @@
 
 DESIGNATED_INIT
 
-@dynamic writeInterval;
-
-- (NSTimeInterval)writeInterval {
-    return _timer.timeInterval;
-}
-
-- (void)setWriteInterval:(NSTimeInterval)writeInterval {
-    @synchronized (self) {
-        _timer.timeInterval = writeInterval;
-    }
-}
-
 + (instancetype)writerWithBasename:(NSString *)basename sessionId:(NSString *)sessionId packetEncoderType:(IMUTLibLogPacketEncoderType)encoderType {
     id <IMUTLibLogPacketStreamEncoder> encoder = [self encoderForType:encoderType];
 
@@ -71,23 +61,18 @@ DESIGNATED_INIT
     }
 }
 
-- (void)closeFile {
-    @synchronized (self) {
-        // Invalidate the timer
-        [_timer invalidate];
-        _timer = nil;
+- (void)closeFileWaitUntilDone:(BOOL)waitUntilDone {
+    [_timer fire];
 
-        // Write out the complete backlog
-        [self timerFired];
-        [_encoder endEncoding];
-        [_currentFileHandle closeFile];
+    // Write out the complete backlog
+    [_encoder endEncodingWaitUntilDone:waitUntilDone];
+    [_currentFileHandle closeFile];
 
-        // Rename file
-        [IMUTLibFileManager renameTemporaryFileAtPath:_currentAbsoluteFilePath];
+    // Rename file
+    [IMUTLibFileManager renameTemporaryFileAtPath:_currentAbsoluteFilePath];
 
-        // Resign self reference for GC, so that this writer will be deallocated automatically
-        _self = nil;
-    }
+    // Resign self reference for GC, so that this writer will be deallocated automatically
+    _self = nil;
 }
 
 # pragma mark IMUTLibLogPacketEncoderDelegate
@@ -104,7 +89,7 @@ DESIGNATED_INIT
         self.mayWrite = YES;
 
         // The session id to use for all packets
-        _sessionId = sessionId;
+        _sessionId = [sessionId copy];
 
         // The packet encoder
         _encoder = encoder;
@@ -121,13 +106,9 @@ DESIGNATED_INIT
         [_encoder beginEncoding];
 
         // Setup timer to encode and write log packets
-        _timerDispatchQueue = makeDispatchQueue(@"log_writer", DISPATCH_QUEUE_SERIAL, DISPATCH_QUEUE_PRIORITY_DEFAULT);
-        _timer = [IMUTLibTimer scheduledTimerWithTimeInterval:5.0
-                                                       target:self
-                                                     selector:@selector(timerFired)
-                                                     userInfo:nil
-                                                      repeats:YES
-                                                dispatchQueue:_timerDispatchQueue];
+        _timerDispatchQueue = makeDispatchQueue(@"log_writer", DISPATCH_QUEUE_SERIAL, DISPATCH_QUEUE_PRIORITY_LOW);
+        _timer = repeatingTimer(5.0, self, @selector(timerFired), _timerDispatchQueue);
+        [_timer schedule];
     }
 
     return self;
@@ -156,19 +137,19 @@ DESIGNATED_INIT
 
 - (void)timerFired {
     if (self.mayWrite && _packetQueue.count) {
-        NSMutableArray *tempPacketQueue;
+        NSMutableArray *writePacketQueue;
 
         @synchronized (self) {
             // Switch packet queues
-            tempPacketQueue = _packetQueue;
-            _packetQueue = [NSMutableArray array];
+            writePacketQueue = [_packetQueue copy];
+            [_packetQueue removeAllObjects];
         }
 
         if ([(NSObject *) self.delegate respondsToSelector:@selector(logWriter:willWriteLogPackets:)]) {
-            [self.delegate logWriter:self willWriteLogPackets:&tempPacketQueue];
+            [self.delegate logWriter:self willWriteLogPackets:&writePacketQueue];
         }
 
-        for (id <IMUTLibLogPacket> logPacket in tempPacketQueue) {
+        for (id <IMUTLibLogPacket> logPacket in writePacketQueue) {
             [_encoder encodeObject:[logPacket dictionaryWithSessionId:_sessionId
                                                  packetSequenceNumber:_packetSequenceNumber++]];
         }

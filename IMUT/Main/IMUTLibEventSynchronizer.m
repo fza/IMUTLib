@@ -8,6 +8,7 @@
 #import "IMUTLibSyncLogPacket.h"
 #import "IMUTLibMain+Internal.h"
 #import "IMUTLibUtil.h"
+#import "IMUTLibFinalizeLogPacket.h"
 
 static dispatch_queue_t synchronizerQueue;
 
@@ -15,19 +16,19 @@ static dispatch_queue_t synchronizerQueue;
 
 - (void)timerFired:(IMUTLibTimer *)timer;
 
-- (void)clockDidStart;
+- (void)clockDidStart:(NSNotification *)notification;
 
-- (void)clockDidStop;
+- (void)clockDidStop:(NSNotification *)notification;
 
 - (void)resetCaches;
 
-- (NSTimeInterval)alignTimeIntervalWithTimer:(NSTimeInterval)timeInterval;
+- (NSTimeInterval)alignTimeInterval:(NSTimeInterval)timeInterval;
 
 @end
 
 @implementation IMUTLibEventSynchronizer {
-    IMUTLibDeltaEntityCache *_lastPersistedDeltaEntities;
-    IMUTLibDeltaEntityCache *_currentDeltaEntities;
+    IMUTLibDeltaEntityBag *_lastPersistedDeltaEntities;
+    IMUTLibDeltaEntityBag *_currentDeltaEntities;
     IMUTLibLogPacketStreamWriter *_logWriter;
     IMUTLibTimer *_timer;
     BOOL _idle;
@@ -35,6 +36,7 @@ static dispatch_queue_t synchronizerQueue;
     NSTimeInterval _syncTimeInterval;
     NSDate *_syncReferenceDate;
     BOOL _firstStarted;
+    unsigned long _eventCount;
 }
 
 SINGLETON
@@ -44,12 +46,12 @@ SINGLETON
 
     // Observe the clock
     [[NSNotificationCenter defaultCenter] addObserver:[self sharedInstance]
-                                             selector:@selector(clockDidStart)
+                                             selector:@selector(clockDidStart:)
                                                  name:IMUTLibClockDidStartNotification
                                                object:nil];
 
     [[NSNotificationCenter defaultCenter] addObserver:[self sharedInstance]
-                                             selector:@selector(clockDidStop)
+                                             selector:@selector(clockDidStop:)
                                                  name:IMUTLibClockDidStopNotification
                                                object:nil];
 }
@@ -62,12 +64,9 @@ SINGLETON
         _timer = nil;
         _logWriter = nil;
         _firstStarted = NO;
-
-        // Initialize caches, so that modules may start producing events as soon as they
-        // are created, though they shouldn't do that this early.
-        [self resetCaches];
-
-        self.syncTimeInterval = 0.25;
+        _currentDeltaEntities = [IMUTLibDeltaEntityBag new];
+        _lastPersistedDeltaEntities = [IMUTLibDeltaEntityBag new];
+        _syncTimeInterval = 0.25;
     }
 
     return self;
@@ -76,31 +75,29 @@ SINGLETON
 - (void)setSyncTimeInterval:(NSTimeInterval)syncTimeInterval {
     // Enforce range between 0.02s and 10.0s
     _syncTimeInterval = MIN(MAX(syncTimeInterval, 0.02), 10.0);
+
+    if (_timer) {
+        @synchronized (self) {
+            if (_timer) {
+                _timer.timeInterval = _syncTimeInterval;
+            }
+        }
+    }
 }
 
 - (IMUTLibDeltaEntity *)persistedEntityForKey:(NSString *)key {
-    @synchronized (self) {
-        if (!_idle) {
-            return [_lastPersistedDeltaEntities deltaEntityForKey:key];
-        }
-    }
-
-    return nil;
+    return [_lastPersistedDeltaEntities deltaEntityForKey:key];
 }
 
 - (void)enqueueDeltaEntity:(id)deltaEntity {
     @synchronized (self) {
-        if (!_idle) {
-            [_currentDeltaEntities addDeltaEntity:deltaEntity];
-        };
+        [_currentDeltaEntities addDeltaEntity:deltaEntity];
     }
 }
 
 - (void)dequeueDeltaEntityWithKey:(NSString *)key {
     @synchronized (self) {
-        if (!_idle) {
-            [_currentDeltaEntities removeDeltaEntityWithKey:key];
-        }
+        [_currentDeltaEntities removeDeltaEntityWithKey:key];
     }
 }
 
@@ -111,20 +108,22 @@ SINGLETON
 // some log packets will have the same reference time, thus _must_ be merged.
 - (void)logWriter:(IMUTLibLogPacketStreamWriter *)logWriter willWriteLogPackets:(NSArray **)packetQueue {
     NSMutableArray *newPacketQueue = [NSMutableArray array];
-    __block IMUTLibEventsLogPacket *refLogPacket, *castedLogPacket;
-    [*packetQueue enumerateObjectsUsingBlock:^(id <IMUTLibLogPacket> logPacket, NSUInteger idx, BOOL *stop){
+    __block IMUTLibEventsLogPacket *refLogPacket, *curLogPacket;
+
+    [*packetQueue enumerateObjectsUsingBlock:^(id <IMUTLibLogPacket> logPacket, NSUInteger index, BOOL *stop){
         if ([logPacket logPacketType] == IMUTLibLogPacketTypeEvents) {
-            castedLogPacket = (IMUTLibEventsLogPacket *) logPacket;
-            if (!refLogPacket || [refLogPacket relativeTime] != [castedLogPacket relativeTime]) {
-                refLogPacket = (IMUTLibEventsLogPacket *) logPacket;
-            } else if (refLogPacket && [refLogPacket relativeTime] == [castedLogPacket relativeTime]) {
-                [refLogPacket.deltaEntityCache mergeWithCache:castedLogPacket.deltaEntityCache];
+            curLogPacket = (IMUTLibEventsLogPacket *) logPacket;
+            if (!refLogPacket || [refLogPacket relativeTime] != [curLogPacket relativeTime]) {
+                refLogPacket = curLogPacket;
+            } else if (refLogPacket && [refLogPacket relativeTime] == [curLogPacket relativeTime]) {
+                [refLogPacket.deltaEntityBag mergeWithCache:curLogPacket.deltaEntityBag];
 
                 return;
             }
         }
 
         [newPacketQueue addObject:logPacket];
+        _eventCount += curLogPacket.deltaEntityBag.count;
     }];
 
     // Swap the packet queue
@@ -133,125 +132,142 @@ SINGLETON
 
 #pragma mark Private
 
-- (void)clockDidStart {
+- (void)clockDidStart:(NSNotification *)notification {
+    if (!_idle) {
+        return;
+    }
+
+    // The new sync reference date
+    NSDate *syncReferenceDate = notification.userInfo[kStartDate];
+
+    // Create new log writer
+    IMUTLibLogPacketStreamWriter *logWriter = [IMUTLibLogPacketStreamWriter writerWithBasename:@"log"
+                                                                                     sessionId:notification.userInfo[kSessionId]
+                                                                             packetEncoderType:IMUTLibLogPacketEncoderJSON];
+
+    logWriter.mayWrite = NO;
+
+    // Enqueue first packets
+    [logWriter enqueuePacket:[IMUTLibSessionInitLogPacket new]];
+    [logWriter enqueuePacket:[IMUTLibSyncLogPacket packetWithSyncDate:syncReferenceDate
+                                                        timeSourceInfo:[((id <IMUTLibTimeSource>) notification.userInfo[kTimeSource]) timeSourceInfo]]];
+
+    // Create new timer
+    IMUTLibTimer *timer = [[IMUTLibTimer alloc] initWithTimeInterval:_syncTimeInterval * 0.75 // run slighty faster than configured
+                                                              target:self
+                                                            selector:@selector(timerFired:)
+                                                            userInfo:nil
+                                                             repeats:YES
+                                                       dispatchQueue:synchronizerQueue];
+
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         @synchronized (self) {
-            if (_idle) {
-                // Set state
-                _idle = NO;
-                _didEnqueueInitialPacket = NO;
-                _timer = nil;
-
-                // Cache the start date of the clock
-                IMUTLibSession *session = [IMUTLibMain imut].session;
-                _syncReferenceDate = [session.timeSource startDate];
-
-                // Create new log writer
-                _logWriter = [IMUTLibLogPacketStreamWriter writerWithBasename:@"log"
-                                                                    sessionId:session.sid
-                                                            packetEncoderType:IMUTLibLogPacketEncoderJSON];
-
-                // Let's inspect what is actually written
-                _logWriter.delegate = self;
-
-                // If the app is resuming, start with a fresh queue
-                if (_firstStarted) {
-                    [self resetCaches];
-                }
-
-                // Enqueue header packets
-                [_logWriter enqueuePacket:[IMUTLibSessionInitLogPacket new]];
-                [_logWriter enqueuePacket:[IMUTLibSyncLogPacket packetWithSyncDate:_syncReferenceDate
-                                                                    timeSourceInfo:[session.timeSource timeSourceInfo]]];
-
-                // Post notification that the synchronizer is about to start
-                [IMUTLibUtil postNotificationOnMainThreadWithNotificationName:IMUTLibEventSynchronizerDidStartNotification
-                                                                       object:nil
-                                                                waitUntilDone:NO];
-
-                // The actual timer that fires every sync time interval
-                _timer = [[IMUTLibTimer alloc] initWithTimeInterval:_syncTimeInterval * 0.75 // fire slighty faster than configured
-                                                             target:self
-                                                           selector:@selector(timerFired:)
-                                                           userInfo:nil
-                                                            repeats:YES
-                                                      dispatchQueue:synchronizerQueue];
-
-                // Add some leeway if the interval is rather long
-                if (_syncTimeInterval >= 5.0) {
-                    _timer.tolerance = _syncTimeInterval * 0.1;
-                }
-
-                // Start the timer
-                [_timer schedule];
-
-                _firstStarted = YES;
+            if (!_idle) {
+                return;
             }
+
+            _idle = NO;
+            _didEnqueueInitialPacket = NO;
+            _timer = nil;
+            _syncReferenceDate = syncReferenceDate;
+            _eventCount = 0;
+            _firstStarted = YES;
+
+            _logWriter = logWriter;
+            _logWriter.delegate = self;
+            logWriter.mayWrite = YES;
+
+            if (_firstStarted) {
+                [self resetCaches];
+            }
+
+            [[NSNotificationCenter defaultCenter] postNotificationName:IMUTLibEventSynchronizerDidStartNotification
+                                                                object:nil];
+
+            _timer = timer;
+            if (_syncTimeInterval >= 5.0) {
+                _timer.tolerance = _syncTimeInterval * 0.1;
+            }
+            [_timer schedule];
         }
     });
 }
 
-- (void)clockDidStop {
-    @synchronized (self) {
-        if (!_idle) {
+- (void)clockDidStop:(NSNotification *)notification {
+    if (!_idle) {
+        @synchronized (self) {
+            if (_idle) {
+                return;
+            }
+
             _idle = YES;
-
-            // Write out all entities and reset the timer
-            [_timer fire];
-            [_timer invalidate];
-            _timer = nil;
-
-            // Close the log file and reset the log writer
-            [_logWriter closeFile];
-            _logWriter = nil;
         }
+
+        // Write out all collected entities and reset timer
+        [_timer fire];
+        [_timer invalidate];
+        _timer = nil;
+
+        NSTimeInterval sessionDuration = [self alignTimeInterval:[((NSNumber *) notification.userInfo[kSessionDuration]) doubleValue]];
+
+        [_logWriter enqueuePacket:[IMUTLibFinalizeLogPacket packetWithSessionDuration:sessionDuration
+                                                                           eventCount:_eventCount]];
+
+        [_logWriter closeFileWaitUntilDone:YES];
+        _logWriter = nil;
     }
 }
 
 - (void)timerFired:(IMUTLibTimer *)timer {
     // Generate and write out a new events packet
-    @synchronized (self) {
-        if (_currentDeltaEntities.count > 0) {
-            NSTimeInterval timeInterval = 0;
-            if (_didEnqueueInitialPacket) {
-                IMUTLibSession * session = [IMUTLibMain imut].session;
-                if ([session timeSourceRunning]) {
-                    timeInterval = [self alignTimeIntervalWithTimer:[session.timeSource intervalSinceClockStart]];
-                } else {
-                    return;
-                }
-            }
+    if (_currentDeltaEntities.count > 0) {
+        IMUTLibDeltaEntityBag *enqueueableDeltaEntityBag;
+        BOOL asInitialPacket = NO;
 
-            id <IMUTLibLogPacket> logPacket = [IMUTLibEventsLogPacket packetWithDeltaEntityCache:_currentDeltaEntities
-                                                                          timeIntervalSinceStart:timeInterval];
+        NSTimeInterval timeInterval = 0;
+        if (_didEnqueueInitialPacket) {
+            IMUTLibSession *session = [IMUTLibMain imut].session;
+            if ([session timeSourceRunning]) {
+                timeInterval = [self alignTimeInterval:[session.timeSource intervalSinceClockStart]];
+            } else {
+                return;
+            }
+        }
+
+        @synchronized (self) {
+            enqueueableDeltaEntityBag = [_currentDeltaEntities copy];
 
             if (!_didEnqueueInitialPacket) {
                 _didEnqueueInitialPacket = YES;
-
-                [logPacket setAdditionalParameters:@{
-                    kIMUTLibInitialEventsPacket : cYES
-                }];
+                asInitialPacket = YES;
             }
 
-            [_logWriter enqueuePacket:logPacket];
-
             [_lastPersistedDeltaEntities mergeWithCache:_currentDeltaEntities];
-
-            // Create new entity cache for the next synchronization run
-            _currentDeltaEntities = [IMUTLibDeltaEntityCache new];
+            [_currentDeltaEntities reset];
         }
+
+        id <IMUTLibLogPacket> logPacket = [IMUTLibEventsLogPacket packetWithDeltaEntityCache:enqueueableDeltaEntityBag
+                                                                      timeIntervalSinceStart:timeInterval];
+
+        if (asInitialPacket) {
+            [logPacket setAdditionalParameters:@{
+                kIMUTLibInitialEventsPacket : cYES
+            }];
+        }
+
+        [_logWriter enqueuePacket:logPacket];
     }
 }
 
 - (void)resetCaches {
-    _currentDeltaEntities = [IMUTLibDeltaEntityCache new];
-    _lastPersistedDeltaEntities = [IMUTLibDeltaEntityCache new];
+    [_currentDeltaEntities reset];
+    [_lastPersistedDeltaEntities reset];
 }
 
-- (NSTimeInterval)alignTimeIntervalWithTimer:(NSTimeInterval)timeInterval {
+- (NSTimeInterval)alignTimeInterval:(NSTimeInterval)timeInterval {
     // Also tried ->
     // fabs(timeInterval / _syncTimeInterval) * _syncTimeInterval;
-    // <- which in a less precise value than the following:
+    // <- which results in a less precise value than the following:
     return timeInterval - fmod(timeInterval, _syncTimeInterval);
 }
 

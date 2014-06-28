@@ -171,3 +171,12 @@
 }
 
 @end
+
+IMUTLibTimer *repeatingTimer(NSTimeInterval timeInterval, id target, SEL selector, dispatch_queue_t dispatchQueue) {
+    return [[IMUTLibTimer alloc] initWithTimeInterval:timeInterval
+                                               target:target
+                                             selector:selector
+                                             userInfo:nil
+                                              repeats:YES
+                                        dispatchQueue:dispatchQueue];
+}

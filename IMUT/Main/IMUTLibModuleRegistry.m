@@ -172,92 +172,90 @@ SINGLETON
 #pragma mark Private
 
 - (BOOL)enableModuleWithName:(NSString *)moduleName config:(NSDictionary *)moduleConfig {
-    @synchronized (self) {
-        // Already enabled?
-        if ([_enabledInstances objectForKey:moduleName]) {
-            return YES;
+    // Already enabled?
+    if ([_enabledInstances objectForKey:moduleName]) {
+        return YES;
+    }
+
+    Class moduleClass = [_allClasses objectForKey:moduleName];
+    if (moduleClass) {
+        // Collect module config
+        if ([moduleClass respondsToSelector:@selector(defaultConfig)]) {
+            NSMutableDictionary *tempConfig = [[moduleClass performSelector:@selector(defaultConfig)] mutableCopy];
+            [tempConfig addEntriesFromDictionary:moduleConfig];
+            moduleConfig = [tempConfig copy];
+            ((NSMutableDictionary *) _moduleConfigs)[moduleName] = moduleConfig;
         }
 
-        Class moduleClass = [_allClasses objectForKey:moduleName];
-        if (moduleClass) {
-            // Collect module config
-            if ([moduleClass respondsToSelector:@selector(defaultConfig)]) {
-                NSMutableDictionary *tempConfig = [[moduleClass performSelector:@selector(defaultConfig)] mutableCopy];
-                [tempConfig addEntriesFromDictionary:moduleConfig];
-                moduleConfig = [tempConfig copy];
-                ((NSMutableDictionary *) _moduleConfigs)[moduleName] = moduleConfig;
+        // Create module instance
+        id moduleInstance = [[moduleClass alloc] initWithConfig:moduleConfig];
+
+        if (moduleInstance) {
+            // Retain the instance
+            [(NSMutableDictionary *) _enabledInstances setObject:moduleInstance forKey:moduleName];
+
+            // Classify by module type(s)
+            BOOL hasValidModuleType = NO;
+            IMUTLibModuleType moduleType = [moduleClass moduleType];
+            for (NSUInteger checkType = 1; checkType < IMUTLibModuleTypeAll; checkType *= 2) {
+                if (moduleType & checkType) {
+                    hasValidModuleType = YES;
+                    NSNumber *checkModuleTypeNumber = [NSNumber numberWithLong:checkType];
+                    NSMutableSet *enabledInstancesForType = _enabledInstancesByType[checkModuleTypeNumber];
+                    if (!enabledInstancesForType) {
+                        enabledInstancesForType = [NSMutableSet set];
+                        ((NSMutableDictionary *) _enabledInstancesByType)[checkModuleTypeNumber] = enabledInstancesForType;
+                    }
+                    [enabledInstancesForType addObject:moduleInstance];
+                }
             }
 
-            // Create module instance
-            id moduleInstance = [[moduleClass alloc] initWithConfig:moduleConfig];
+            // Check for valid module type
+            NSAssert(hasValidModuleType, @"The module \"%@\" does not designate a valid module type.", moduleName);
 
-            if (moduleInstance) {
-                // Retain the instance
-                [(NSMutableDictionary *) _enabledInstances setObject:moduleInstance forKey:moduleName];
-
-                // Classify by module type(s)
-                BOOL hasValidModuleType = NO;
-                IMUTLibModuleType moduleType = [moduleClass moduleType];
-                for (NSUInteger checkType = 1; checkType < IMUTLibModuleTypeAll; checkType *= 2) {
-                    if (moduleType & checkType) {
-                        hasValidModuleType = YES;
-                        NSNumber *checkModuleTypeNumber = [NSNumber numberWithLong:checkType];
-                        NSMutableSet *enabledInstancesForType = _enabledInstancesByType[checkModuleTypeNumber];
-                        if (!enabledInstancesForType) {
-                            enabledInstancesForType = [NSMutableSet set];
-                            ((NSMutableDictionary *) _enabledInstancesByType)[checkModuleTypeNumber] = enabledInstancesForType;
-                        }
-                        [enabledInstancesForType addObject:moduleInstance];
-                    }
-                }
-
-                // Check for valid module type
-                NSAssert(hasValidModuleType, @"The module \"%@\" does not designate a valid module type.", moduleName);
-
-                // Check for event producer protocol
-                if (moduleType & IMUTLibModuleTypeEvented) {
-                    BOOL isConformEventAggregator = NO;
-                    Class curClass = moduleClass;
-                    do {
-                        if (class_conformsToProtocol(curClass, @protocol(IMUTLibEventAggregator))) {
-                            isConformEventAggregator = YES;
-
-                            break;
-                        }
-                    } while ((curClass = class_getSuperclass(curClass)));
-
-                    NSAssert(isConformEventAggregator, @"The module \"%@\" does not implement the IMUTLibEventAggregator protocol.", moduleName);
-                }
-
-                // Check if it is a recorder
-                if (!self.haveMediaStream && moduleType & IMUTLibModuleTypeStream) {
-                    self.haveMediaStream = YES;
-                }
-
-                // Check if it is a time source
+            // Check for event producer protocol
+            if (moduleType & IMUTLibModuleTypeEvented) {
+                BOOL isConformEventAggregator = NO;
                 Class curClass = moduleClass;
                 do {
-                    if (class_conformsToProtocol(curClass, @protocol(IMUTLibTimeSource))) {
-                        NSInteger preference = [(NSNumber *) [moduleClass performSelector:@selector(timeSourcePreference)] intValue];
-                        if (preference > _bestTimeSourcePreference) {
-                            _bestTimeSourcePreference = preference;
-                            self.bestTimeSource = moduleInstance;
-                        }
+                    if (class_conformsToProtocol(curClass, @protocol(IMUTLibEventAggregator))) {
+                        isConformEventAggregator = YES;
 
                         break;
                     }
                 } while ((curClass = class_getSuperclass(curClass)));
 
-                IMUTLogMain(@"Using module \"%@\"", moduleName);
-
-                return YES;
+                NSAssert(isConformEventAggregator, @"The module \"%@\" does not implement the IMUTLibEventAggregator protocol.", moduleName);
             }
+
+            // Check if it is a recorder
+            if (!self.haveMediaStream && moduleType & IMUTLibModuleTypeStream) {
+                self.haveMediaStream = YES;
+            }
+
+            // Check if it is a time source
+            Class curClass = moduleClass;
+            do {
+                if (class_conformsToProtocol(curClass, @protocol(IMUTLibTimeSource))) {
+                    NSInteger preference = [(NSNumber *) [moduleClass performSelector:@selector(timeSourcePreference)] intValue];
+                    if (preference > _bestTimeSourcePreference) {
+                        _bestTimeSourcePreference = preference;
+                        self.bestTimeSource = moduleInstance;
+                    }
+
+                    break;
+                }
+            } while ((curClass = class_getSuperclass(curClass)));
+
+            IMUTLogMain(@"Using module \"%@\"", moduleName);
+
+            return YES;
         }
-
-        IMUTLogDebug(@"Unable to enable module \"%@\".", moduleName);
-
-        return NO;
     }
+
+    IMUTLogDebug(@"Unable to enable module \"%@\".", moduleName);
+
+    return NO;
 }
 
 - (void)freeze {

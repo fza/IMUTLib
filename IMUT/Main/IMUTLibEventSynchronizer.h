@@ -1,6 +1,6 @@
 #import <Foundation/Foundation.h>
 #import "IMUTLibSession.h"
-#import "IMUTLibDeltaEntityCache.h"
+#import "IMUTLibDeltaEntityBag.h"
 #import "IMUTLibLogPacketStreamWriter.h"
 #import "Macros.h"
 

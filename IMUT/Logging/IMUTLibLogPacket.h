@@ -4,7 +4,8 @@
 typedef NS_ENUM(NSUInteger, IMUTLibLogPacketType) {
     IMUTLibLogPacketTypeSessionInit = 1,
     IMUTLibLogPacketTypeSync = 2,
-    IMUTLibLogPacketTypeEvents = 3
+    IMUTLibLogPacketTypeEvents = 3,
+    IMUTLibLogPacketTypeFinalize = 4
 };
 
 // When log packets are created they must not prepare their parameters, because it is not ensured

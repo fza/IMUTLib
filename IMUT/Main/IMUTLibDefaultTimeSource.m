@@ -1,6 +1,7 @@
 #import "IMUTLibDefaultTimeSource.h"
 #import "IMUTLibConstants.h"
 #import "IMUTLibUtil.h"
+#import "IMUTLibFunctions.h"
 
 NSUInteger IMUTLibDefaultTimeSourcePreference = 0;
 
@@ -64,8 +65,8 @@ NSUInteger IMUTLibDefaultTimeSourcePreference = 0;
 }
 
 - (NSTimeInterval)intervalSinceClockStart {
-    if(_startDate) {
-        return [IMUTLibUtil uptime] - _referenceTime;
+    if (_startDate) {
+        return uptime() - _referenceTime;
     }
 
     return 0;
@@ -76,16 +77,18 @@ NSUInteger IMUTLibDefaultTimeSourcePreference = 0;
 - (void)didReceiveStartResumeNotification:(NSNotification *)notification {
     @synchronized (self) {
         _startDate = [NSDate date];
-        _referenceTime = [IMUTLibUtil uptime];
+        _referenceTime = uptime();
         [self.timeSourceDelegate clockDidStartAtDate:_startDate];
     }
 }
 
 - (void)didReceivePauseTerminateNotification:(NSNotification *)notification {
     @synchronized (self) {
-        _startDate = nil;
-        [self.timeSourceDelegate clockDidStop];
-        _referenceTime = 0;
+        if (_startDate) {
+            _startDate = nil;
+            [self.timeSourceDelegate clockDidStopAfterTimeInterval:[self intervalSinceClockStart]];
+            _referenceTime = 0;
+        }
     }
 }
 

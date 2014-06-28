@@ -6,14 +6,14 @@
 
 @protocol IMUTLibMediaEncoderVideoDelegate
 
-- (BOOL)encoder:(IMUTLibMediaFrameBasedVideoEncoder* )encoder populatePixelBuffer:(CVPixelBufferRef)pixelBuffer forTime:(CMTime)frameTime;
+- (BOOL)encoder:(IMUTLibMediaFrameBasedVideoEncoder *)encoder populatePixelBuffer:(CVPixelBufferRef)pixelBuffer forTime:(CMTime)frameTime;
 
 @optional
-- (void)encoder:(IMUTLibMediaFrameBasedVideoEncoder* )encoder videoSettings:(NSMutableDictionary *)videoSettings;
+- (void)encoder:(IMUTLibMediaFrameBasedVideoEncoder *)encoder videoSettings:(NSMutableDictionary *)videoSettings;
 
-- (void)encoder:(IMUTLibMediaFrameBasedVideoEncoder* )encoder bufferAttributes:(NSMutableDictionary *)bufferAttributes;
+- (void)encoder:(IMUTLibMediaFrameBasedVideoEncoder *)encoder bufferAttributes:(NSMutableDictionary *)bufferAttributes;
 
-- (void)encoder:(IMUTLibMediaFrameBasedVideoEncoder* )encoder droppedFrames:(NSUInteger)droppedFrames;
+- (void)encoder:(IMUTLibMediaFrameBasedVideoEncoder *)encoder droppedFrames:(NSUInteger)droppedFrames;
 
 @end
 

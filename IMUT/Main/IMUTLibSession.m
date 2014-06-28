@@ -2,10 +2,11 @@
 #import "IMUTLibSession.h"
 #import "IMUTLibUtil.h"
 #import "IMUTLibMetaData.h"
+#import "IMUTLibFunctions.h"
 
 @interface IMUTLibSession ()
 
-@property(nonatomic, readwrite, retain) NSString *sid;
+@property(nonatomic, readwrite, retain) NSString *sessionId;
 @property(nonatomic, readwrite, weak) id <IMUTLibTimeSource> timeSource;
 @property(nonatomic, readwrite, retain) NSNumber *sortingNumber;
 
@@ -32,26 +33,32 @@
 #pragma mark IMUTLibTimeSourceDelegate
 
 - (void)clockDidStartAtDate:(NSDate *)startDate {
-    @synchronized (self) {
-        [IMUTLibUtil postNotificationOnMainThreadWithNotificationName:IMUTLibClockDidStartNotification
-                                                               object:self.timeSource
-                                                        waitUntilDone:YES];
-    }
+    [IMUTLibUtil postNotificationOnMainThreadWithNotificationName:IMUTLibClockDidStartNotification
+                                                           object:self
+                                                         userInfo:@{
+                                                             kSessionId : self.sessionId,
+                                                             kTimeSource : self.timeSource,
+                                                             kStartDate : [startDate copy]
+                                                         }
+                                                    waitUntilDone:YES];
 }
 
-- (void)clockDidStop {
-    @synchronized (self) {
-        [IMUTLibUtil postNotificationOnMainThreadWithNotificationName:IMUTLibClockDidStopNotification
-                                                               object:self.timeSource
-                                                        waitUntilDone:YES];
-    }
+- (void)clockDidStopAfterTimeInterval:(NSTimeInterval)timeInterval {
+    [IMUTLibUtil postNotificationOnMainThreadWithNotificationName:IMUTLibClockDidStopNotification
+                                                           object:self
+                                                         userInfo:@{
+                                                             kSessionId : self.sessionId,
+                                                             kTimeSource : self.timeSource,
+                                                             kSessionDuration : @(timeInterval)
+                                                         }
+                                                    waitUntilDone:YES];
 }
 
 #pragma mark Private
 
 - (instancetype)initWithTimeSource:(id <IMUTLibTimeSource>)timeSource {
     if (self = [super init]) {
-        self.sid = [IMUTLibUtil randomStringWithLength:10];
+        self.sessionId = randomString(10);
         self.timeSource = timeSource;
         self.timeSource.timeSourceDelegate = self;
         self.sortingNumber = [[IMUTLibMetaData sharedInstance] numberAndIncr:kIMUTNextSortingNumber
@@ -64,7 +71,7 @@
 
         _invalid = NO;
 
-        IMUTLogMain(@"Session ID: %@", self.sid);
+        IMUTLogMain(@"Session ID: %@", self.sessionId);
     }
 
     return self;

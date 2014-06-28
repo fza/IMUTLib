@@ -53,17 +53,17 @@
 }
 
 - (NSDictionary *)parameters {
-    NSMutableDictionary *params = [NSMutableDictionary dictionary];
-
     switch (_representation) {
         case IMUTLibUIViewControllerModuleClassNameRepresentationFull:
-            params[kIMUTLibUIViewControllerChangeEventParamFullClassName] = _fullClassName;
+            return @{
+                kIMUTLibUIViewControllerChangeEventParamFullClassName : _fullClassName
+            };
 
         default:
-            params[kIMUTLibUIViewControllerChangeEventParamShortClassName] = _shortClassName;
+            return @{
+                kIMUTLibUIViewControllerChangeEventParamShortClassName : _shortClassName
+            };
     }
-
-    return params;
 }
 
 @end

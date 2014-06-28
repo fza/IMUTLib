@@ -54,7 +54,7 @@
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         [[UINavigationController class] __IMUT_integrateMethodFromSourceClass:[IMUTLibUIViewControllerUINavigationControllerObserver class]
-                                                       withSourceSelector:@selector(setDelegate:)];
+                                                           withSourceSelector:@selector(setDelegate:)];
 
         if (object.delegate) {
             [object setDelegate:object.delegate];

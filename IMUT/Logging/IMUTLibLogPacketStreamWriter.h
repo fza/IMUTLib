@@ -25,9 +25,6 @@ typedef NS_ENUM(NSUInteger, IMUTLibLogPacketEncoderType) {
 // A flag to pause/resume writing
 @property(atomic, readwrite, assign) BOOL mayWrite;
 
-// The time interval to write out enqueued log packets
-@property(nonatomic, readwrite, assign) NSTimeInterval writeInterval;
-
 // The delegate (= event synchronizer)
 @property(nonatomic, readwrite, weak) id <IMUTLibStreamLogWriterDelegate> delegate;
 
@@ -41,6 +38,6 @@ typedef NS_ENUM(NSUInteger, IMUTLibLogPacketEncoderType) {
 
 - (void)enqueuePacket:(id <IMUTLibLogPacket>)logPacket;
 
-- (void)closeFile;
+- (void)closeFileWaitUntilDone:(BOOL)waitUntilDone;
 
 @end
