@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>autostart</key>
+	<true/>
+	<key>modules</key>
+	<dict>
+		<key>screenRecorder</key>
+		<true/>
+		<key>location</key>
+		<true/>
+		<key>heading</key>
+		<true/>
+		<key>orientation</key>
+		<true/>
+	</dict>
+</dict>
+</plist>

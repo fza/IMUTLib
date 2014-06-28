@@ -4,7 +4,17 @@
 <dict>
 	<key>SchemeUserState</key>
 	<dict>
-		<key>IMUT.xcscheme</key>
+		<key>IMUT Bundle.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>3</integer>
+		</dict>
+		<key>IMUT Framework.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>5</integer>
+		</dict>
+		<key>IMUT Library.xcscheme</key>
 		<dict>
 			<key>orderHint</key>
 			<integer>0</integer>
@@ -18,6 +28,16 @@
 			<true/>
 		</dict>
 		<key>262DF8D719596FF600A5AEE4</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>262DF8F41959704700A5AEE4</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>262DFA1F1959721000A5AEE4</key>
 		<dict>
 			<key>primary</key>
 			<true/>
