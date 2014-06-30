@@ -7,7 +7,9 @@
 @property(nonatomic, readonly, retain) IMUTLibDeltaEntityBag *deltaEntityBag;
 @property(nonatomic, readonly, assign) NSTimeInterval relativeTime;
 
-+ (instancetype)packetWithDeltaEntityCache:(IMUTLibDeltaEntityBag *)_currentEntityCache
-                    timeIntervalSinceStart:(NSTimeInterval)timeInterval;
++ (instancetype)packetWithDeltaEntityBag:(IMUTLibDeltaEntityBag *)deltaEntityBag
+                  timeIntervalSinceStart:(NSTimeInterval)timeInterval;
+
+- (void)mergeIn:(IMUTLibEventsLogPacket *)logPacket;
 
 @end

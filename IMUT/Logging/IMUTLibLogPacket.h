@@ -5,7 +5,7 @@ typedef NS_ENUM(NSUInteger, IMUTLibLogPacketType) {
     IMUTLibLogPacketTypeSessionInit = 1,
     IMUTLibLogPacketTypeSync = 2,
     IMUTLibLogPacketTypeEvents = 3,
-    IMUTLibLogPacketTypeFinalize = 4
+    IMUTLibLogPacketTypeFinal = 4
 };
 
 // When log packets are created they must not prepare their parameters, because it is not ensured
@@ -16,8 +16,7 @@ typedef NS_ENUM(NSUInteger, IMUTLibLogPacketType) {
 
 - (IMUTLibLogPacketType)logPacketType;
 
-- (NSDictionary *)dictionaryWithSessionId:(NSString *)sessionId
-                     packetSequenceNumber:(unsigned long)sequenceNumber;
+- (NSDictionary *)dictionaryWithSequence:(unsigned long)sequence;
 
 - (void)setAdditionalParameters:(NSDictionary *)parameters;
 

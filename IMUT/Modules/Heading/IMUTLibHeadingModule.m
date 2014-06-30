@@ -36,7 +36,7 @@
 
 + (NSDictionary *)defaultConfig {
     return @{
-        kIMUTLibHeadingModuleConfigAllowDisplayCalibration : cNO,
+        kIMUTLibHeadingModuleConfigAllowDisplayCalibration : numNO,
         kIMUTLibHeadingModuleConfigMinDeltaHeadingDegrees : @5.0
     };
 }

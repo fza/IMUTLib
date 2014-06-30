@@ -1,5 +1,8 @@
 #import <Foundation/Foundation.h>
 #import <AVFoundation/AVFoundation.h>
+#include "IMUTLibVideoEncoderFunctions.h"
+
+@protocol IMUTLibMediaEncoder;
 
 typedef NS_ENUM(NSUInteger, IMUTLibMediaSourceType) {
     IMUTLibMediaSourceTypeAudio = 1,
@@ -17,17 +20,21 @@ typedef NS_ENUM(NSUInteger, IMUTLibMediaSourceType) {
 @protocol IMUTLibMediaEncoder
 
 // The type if this media source
-@property(nonatomic, readonly, assign) IMUTLibMediaSourceType mediaSourceType;
+@property(nonatomic, readonly) IMUTLibMediaSourceType mediaSourceType;
 
 // The actual writer input object
-@property(nonatomic, readonly, retain) AVAssetWriterInput *writerInput;
+@property(nonatomic, readonly) AVAssetWriterInput *writerInput;
 
 // The writer to pass all data
-@property(nonatomic, readwrite, assign) id <IMUTLibMediaEncoderDelegate> delegate;
+@property(nonatomic, readwrite, weak) id <IMUTLibMediaEncoderDelegate> delegate;
 
-// Wether this media source has stopped producing data
-@property(nonatomic, readonly, assign) BOOL stopped;
+// The last used timing info
+- (IMFrameTimingRef)lastFrameTiming;
 
-- (void)resetDuration;
+// Tell the encoder to start encoding
+- (BOOL)start;
+
+// Tell the encoder to finalize
+- (void)stop;
 
 @end

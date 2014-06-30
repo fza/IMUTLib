@@ -12,10 +12,12 @@ NSString *const IMUTLibWillPauseNotification;
 NSString *const IMUTLibDidResumeNotification;
 NSString *const IMUTLibWillTerminateNotification;
 NSString *const IMUTLibModuleRegistryDidFreezeNotification;
-NSString *const IMUTLibDidSessionCreateNotification;
+NSString *const IMUTLibDidCreateSessionNotification;
+NSString *const IMUTLibDidInvalidateSessionNotification;
 NSString *const IMUTLibClockDidStartNotification;
 NSString *const IMUTLibClockDidStopNotification;
 NSString *const IMUTLibEventSynchronizerDidStartNotification;
+NSString *const IMUTLibEventSynchronizerWillStopNotification;
 
 
 // Configuration keys
@@ -37,10 +39,11 @@ NSString *const kIMUTLibDeltaEntityTypeUnknown;
 NSString *const kIMUTLibLogPacketTypeSessionInit;
 NSString *const kIMUTLibLogPacketTypeSync;
 NSString *const kIMUTLibLogPacketTypeEvents;
-NSString *const kIMUTLibLogPacketTypeFinalize;
+NSString *const kIMUTLibLogPacketTypeFinal;
 
 
 // Misc constants
+NSString* const kDefault;
 NSString* const kUnknown;
 NSString *const kSessionId;
 NSString *const kTimeSource;
@@ -54,5 +57,5 @@ NSString *const IMUTMetaFileBasename;
 
 
 // Special constants
-NSNumber *cNO;
-NSNumber *cYES;
+NSNumber *numNO;
+NSNumber *numYES;

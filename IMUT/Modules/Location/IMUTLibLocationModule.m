@@ -36,7 +36,7 @@
 
 + (NSDictionary *)defaultConfig {
     return @{
-        kIMUTLibLocationModuleConfigOnlyIfAlreadyAuthorized : cNO,
+        kIMUTLibLocationModuleConfigOnlyIfAlreadyAuthorized : numNO,
         kIMUTLibLocationModuleConfigMinDistanceMeters : @5.0
     };
 }

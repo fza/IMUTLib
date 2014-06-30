@@ -17,17 +17,13 @@
 DESIGNATED_INIT
 
 + (instancetype)deltaEntityWithParameters:(NSDictionary *)parameters sourceEvent:(id <IMUTLibSourceEvent>)sourceEvent {
-    return [[self alloc] initWithParameters:parameters
-                                sourceEvent:sourceEvent];
+    return [[self alloc] initWithParameters:parameters sourceEvent:sourceEvent];
 }
 
 + (instancetype)deltaEntityWithSourceEvent:(id <IMUTLibSourceEvent>)sourceEvent {
-    IMUTLibDeltaEntity *deltaEntity = [[self alloc] initWithParameters:[sourceEvent parameters]
-                                                           sourceEvent:sourceEvent];
-
-    if (deltaEntity) {
-        deltaEntity.entityType = IMUTLibDeltaEntityTypeAbsolute;
-    }
+    IMUTLibDeltaEntity *deltaEntity = [[self alloc] initWithParameters:nil sourceEvent:sourceEvent];
+    deltaEntity.entityType = IMUTLibDeltaEntityTypeAbsolute;
+    deltaEntity.shouldMergeWithSourceEventParams = YES;
 
     return deltaEntity;
 }
@@ -39,13 +35,13 @@ DESIGNATED_INIT
 - (NSDictionary *)parameters {
     NSDictionary *params = _parameters;
 
-    if (params == nil) {
-        params = [NSMutableDictionary dictionary];
-    }
-
-    if (self.shouldMergeWithSourceEventParams) {
+    if((params == nil || !params.count) && self.shouldMergeWithSourceEventParams) {
+        return [self.sourceEvent parameters];
+    } else if(self.shouldMergeWithSourceEventParams) {
         params = [[self.sourceEvent parameters] mutableCopy];
         [(NSMutableDictionary *) params addEntriesFromDictionary:_parameters];
+    } else {
+        params = @{};
     }
 
     return params;

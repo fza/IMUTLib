@@ -9,13 +9,11 @@
 
 @property(nonatomic, readwrite, retain) NSString *basename;
 
-- (id)initWithBasename:(NSString *)basename
-             sessionId:(NSString *)sessionId
-         packetEncoder:(id <IMUTLibLogPacketStreamEncoder>)encoder;
+- (id)initWithBasename:(NSString *)basename packetEncoder:(id <IMUTLibLogPacketStreamEncoder>)encoder;
 
-- (NSFileHandle *)fileHandle;
+- (void)run;
 
-- (void)timerFired;
+- (void)createFileHandle;
 
 + (id <IMUTLibLogPacketStreamEncoder>)encoderForType:(IMUTLibLogPacketEncoderType)encoderType;
 
@@ -25,135 +23,139 @@
     // Retain self, because the original owner may release early (i.e. the synchronizer), what
     // would cause this class to be deallocated before the current log file could have been
     // finalized.
-    __strong id _self;
+    __strong id _strongSelf;
 
-    NSString *_sessionId;
     id <IMUTLibLogPacketStreamEncoder> _encoder;
+
     NSFileHandle *_currentFileHandle;
     NSString *_currentAbsoluteFilePath;
-    unsigned long _packetSequenceNumber;
+
+    unsigned long _packetSequence;
     NSMutableArray *_packetQueue;
+
+    dispatch_queue_t _dispatchQueue;
     IMUTLibTimer *_timer;
-    dispatch_queue_t _timerDispatchQueue;
 }
 
 DESIGNATED_INIT
 
-+ (instancetype)writerWithBasename:(NSString *)basename sessionId:(NSString *)sessionId packetEncoderType:(IMUTLibLogPacketEncoderType)encoderType {
-    id <IMUTLibLogPacketStreamEncoder> encoder = [self encoderForType:encoderType];
-
-    return [self writerWithBasename:basename
-                          sessionId:sessionId
-                      packetEncoder:encoder];
++ (instancetype)writerWithBasename:(NSString *)basename packetEncoderType:(IMUTLibLogPacketEncoderType)encoderType {
+    return [[self alloc] initWithBasename:basename packetEncoder:[self encoderForType:encoderType]];
 }
 
-+ (id)writerWithBasename:(NSString *)basename sessionId:(NSString *)sessionId packetEncoder:(id <IMUTLibLogPacketStreamEncoder>)encoder {
-    return [[self alloc] initWithBasename:basename
-                                sessionId:sessionId
-                            packetEncoder:encoder];
+- (void)newFile {
+    if (_currentFileHandle) {
+        [self closeFileWaitUntilDone:YES];
+    }
+
+    dispatch_sync(_dispatchQueue, ^{
+        // Maintain self reference
+        _strongSelf = self;
+
+        // The packet backlog and next sequence number
+        _packetQueue = [NSMutableArray array];
+        _packetSequence = 0;
+
+        // Open new file
+        [self createFileHandle];
+
+        // Resume the timer
+        [_timer resume];
+    });
 }
 
 - (void)enqueuePacket:(id <IMUTLibLogPacket>)logPacket {
-    @synchronized (self) {
-        if (_timer) {
-            [_packetQueue addObject:logPacket];
-        }
+    @synchronized (_packetQueue) {
+        [_packetQueue addObject:logPacket];
     }
 }
 
 - (void)closeFileWaitUntilDone:(BOOL)waitUntilDone {
-    [_timer fire];
+    dispatch_sync(_dispatchQueue, ^{
+        if(!_currentFileHandle || [_timer paused]) {
+            return;
+        }
 
-    // Write out the complete backlog
-    [_encoder endEncodingWaitUntilDone:waitUntilDone];
-    [_currentFileHandle closeFile];
+        // Encode all packets in the queue and pause the timer
+        [_timer fireAndPause];
 
-    // Rename file
-    [IMUTLibFileManager renameTemporaryFileAtPath:_currentAbsoluteFilePath];
+        // Write out the complete backlog
+        [_encoder endEncoding];
 
-    // Resign self reference for GC, so that this writer will be deallocated automatically
-    _self = nil;
+        // Close and rename file
+        [_currentFileHandle closeFile];
+        [IMUTLibFileManager renameTemporaryFileAtPath:_currentAbsoluteFilePath];
+        _currentFileHandle = nil;
+        _currentAbsoluteFilePath = nil;
+
+        // Resign self reference
+        _strongSelf = nil;
+    });
 }
 
 # pragma mark IMUTLibLogPacketEncoderDelegate
 
 - (void)encoder:(id <IMUTLibLogPacketStreamEncoder>)encoder encodedData:(NSData *)data {
-    [[self fileHandle] writeData:data];
+    [_currentFileHandle writeData:data];
 }
 
 #pragma mark Private
 
-- (id)initWithBasename:(NSString *)basename sessionId:(NSString *)sessionId packetEncoder:(id <IMUTLibLogPacketStreamEncoder>)encoder {
+- (id)initWithBasename:(NSString *)basename packetEncoder:(id <IMUTLibLogPacketStreamEncoder>)encoder {
     if (self = [super init]) {
-        self.basename = basename;
-        self.mayWrite = YES;
+        // The basename to use for all filenames
+        _basename = basename;
 
-        // The session id to use for all packets
-        _sessionId = [sessionId copy];
-
-        // The packet encoder
+        // Setup the packet encoder
         _encoder = encoder;
         _encoder.delegate = self;
-
-        // Maintain self reference for GC
-        _self = self;
-
-        // The packet backlog and next sequence number
-        _packetQueue = [NSMutableArray array];
-        _packetSequenceNumber = 0;
-
-        // Begin encoding
         [_encoder beginEncoding];
 
         // Setup timer to encode and write log packets
-        _timerDispatchQueue = makeDispatchQueue(@"log_writer", DISPATCH_QUEUE_SERIAL, DISPATCH_QUEUE_PRIORITY_LOW);
-        _timer = repeatingTimer(5.0, self, @selector(timerFired), _timerDispatchQueue);
-        [_timer schedule];
+        _dispatchQueue = makeDispatchQueue(@"log_writer", DISPATCH_QUEUE_SERIAL, DISPATCH_QUEUE_PRIORITY_LOW);
+        _timer = repeatingTimer(5.0, self, @selector(run), _dispatchQueue, NO);
     }
 
     return self;
 }
 
-- (NSFileHandle *)fileHandle {
-    if (!_currentFileHandle) {
-        NSString *absolutePath = [IMUTLibFileManager absoluteFilePathWithBasename:self.basename
-                                                                        extension:@"json"
-                                                                 ensureUniqueness:YES
-                                                                      isTemporary:YES];
-        _currentAbsoluteFilePath = absolutePath;
-        _currentFileHandle = [NSFileHandle fileHandleForWritingAtPath:absolutePath];
-        if (!_currentFileHandle) {
-            [[NSFileManager defaultManager] createFileAtPath:absolutePath
-                                                    contents:nil
-                                                  attributes:nil];
-            _currentFileHandle = [NSFileHandle fileHandleForWritingAtPath:absolutePath];
-        }
-
-        [_currentFileHandle seekToEndOfFile];
-    }
-
-    return _currentFileHandle;
-}
-
-- (void)timerFired {
-    if (self.mayWrite && _packetQueue.count) {
+- (void)run {
+    if (_packetQueue.count) {
+        // Switch packet queues
         NSMutableArray *writePacketQueue;
-
-        @synchronized (self) {
-            // Switch packet queues
+        @synchronized (_packetQueue) {
             writePacketQueue = [_packetQueue copy];
             [_packetQueue removeAllObjects];
         }
 
+        // Notify the delegate
         if ([(NSObject *) self.delegate respondsToSelector:@selector(logWriter:willWriteLogPackets:)]) {
             [self.delegate logWriter:self willWriteLogPackets:&writePacketQueue];
         }
 
+        // Write packets via the encoder
         for (id <IMUTLibLogPacket> logPacket in writePacketQueue) {
-            [_encoder encodeObject:[logPacket dictionaryWithSessionId:_sessionId
-                                                 packetSequenceNumber:_packetSequenceNumber++]];
+            [_encoder encodeObject:[logPacket dictionaryWithSequence:_packetSequence++]];
         }
     }
+}
+
+- (void)createFileHandle {
+    _currentAbsoluteFilePath = [IMUTLibFileManager absoluteFilePathWithBasename:self.basename
+                                                                      extension:@"json"
+                                                               ensureUniqueness:YES
+                                                                    isTemporary:YES];
+
+    _currentFileHandle = [NSFileHandle fileHandleForWritingAtPath:_currentAbsoluteFilePath];
+
+    if (!_currentFileHandle) {
+        [[NSFileManager defaultManager] createFileAtPath:_currentAbsoluteFilePath
+                                                contents:nil
+                                              attributes:nil];
+        _currentFileHandle = [NSFileHandle fileHandleForWritingAtPath:_currentAbsoluteFilePath];
+    }
+
+    [_currentFileHandle seekToEndOfFile];
 }
 
 + (id <IMUTLibLogPacketStreamEncoder>)encoderForType:(IMUTLibLogPacketEncoderType)encoderType {

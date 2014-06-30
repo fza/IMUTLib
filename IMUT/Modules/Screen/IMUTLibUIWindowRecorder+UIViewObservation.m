@@ -20,9 +20,10 @@ static UITextField *activeSecureUITextField;
     if (!activeUIStatusBar || activeUIStatusBar != self) {
         activeUIStatusBar = self;
 
-        [IMUTLibUtil postNotificationOnMainThreadWithNotificationName:UIStatusBarChangedNotification
-                                                               object:self
-                                                        waitUntilDone:NO];
+        [IMUTLibUtil postNotificationName:UIStatusBarChangedNotification
+                                   object:self
+                             onMainThread:YES
+                            waitUntilDone:NO];
     }
 
     [self original_setFrame:frame];
@@ -48,9 +49,10 @@ static UITextField *activeSecureUITextField;
     if (isFirstResponder && [self isSecureTextEntry]) {
         activeSecureUITextField = self;
 
-        [IMUTLibUtil postNotificationOnMainThreadWithNotificationName:UISecureTextFieldBecameFirstResponder
-                                                               object:self
-                                                        waitUntilDone:NO];
+        [IMUTLibUtil postNotificationName:UISecureTextFieldBecameFirstResponder
+                                   object:self
+                             onMainThread:YES
+                            waitUntilDone:NO];
     }
 
     return isFirstResponder;
@@ -67,9 +69,10 @@ static UITextField *activeSecureUITextField;
     if (resignedFirstResponder && activeSecureUITextField == self) {
         activeSecureUITextField = nil;
 
-        [IMUTLibUtil postNotificationOnMainThreadWithNotificationName:UISecureTextFieldResignedFirstResponder
-                                                               object:self
-                                                        waitUntilDone:NO];
+        [IMUTLibUtil postNotificationName:UISecureTextFieldResignedFirstResponder
+                                   object:self
+                             onMainThread:YES
+                            waitUntilDone:NO];
     }
 
     return resignedFirstResponder;

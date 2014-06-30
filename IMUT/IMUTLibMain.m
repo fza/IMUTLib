@@ -53,7 +53,7 @@ static IMUTLibMain *sharedInstance;
         sharedInstance = [(IMUTLibMain *) [super alloc] initWithConfigFromPlistFile:configFile];
 
         // Autostart?
-        if ([[sharedInstance.config valueForConfigKey:kIMUTLibConfigAutostart default:cNO] boolValue]) {
+        if ([[sharedInstance.config valueForConfigKey:kIMUTLibConfigAutostart default:numNO] boolValue]) {
             [sharedInstance start];
         }
     });
@@ -72,10 +72,7 @@ static IMUTLibMain *sharedInstance;
 }
 
 - (void)start {
-    static dispatch_once_t startToken;
-    dispatch_once(&startToken, ^{
         [self doStart];
-    });
 }
 
 #pragma mark Private

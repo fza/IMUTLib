@@ -24,11 +24,6 @@ static NSString *arrayClose = @"\n]";
         _began = NO;
         _closed = NO;
         _encodedFirstObject = NO;
-        _encodingQueue = makeDispatchQueue(
-            [NSString stringWithFormat:@"json_stream_encoder.%p", (__bridge void *) self],
-            DISPATCH_QUEUE_SERIAL,
-            DISPATCH_QUEUE_PRIORITY_LOW
-        );
     }
 
     return self;
@@ -44,7 +39,7 @@ static NSString *arrayClose = @"\n]";
                                                               options:NSJSONWritingPrettyPrinted
                                                                 error:&error];
 
-        if (error == nil) {
+        if (!error) {
             NSString *rawDataString = [[NSString alloc] initWithData:rawJSONData
                                                             encoding:NSUTF8StringEncoding];
 
@@ -70,9 +65,7 @@ static NSString *arrayClose = @"\n]";
 
                 _encodedFirstObject = YES;
 
-                dispatch_async(_encodingQueue, ^{
-                    [self writeString:dataString];
-                });
+                [self writeString:dataString];
             }
         } else if ([(NSObject *) self.delegate respondsToSelector:@selector(encoder:encodingError:)]) {
             [self.delegate encoder:self encodingError:error];
@@ -80,7 +73,7 @@ static NSString *arrayClose = @"\n]";
     }
 }
 
-- (void)endEncodingWaitUntilDone:(BOOL)waitUntilDone {
+- (void)endEncoding {
     if (!_began || _closed) {
         return;
     }
@@ -89,18 +82,7 @@ static NSString *arrayClose = @"\n]";
         _closed = YES;
     }
 
-    if (waitUntilDone) {
-        BOOL doneEncoding;
-        do {
-            doneEncoding = waitForDispatchQueueToBecomeIdle(_encodingQueue, 5 * NSEC_PER_SEC);
-        } while (!doneEncoding);
-
-        [self writeString:arrayClose];
-    } else {
-        dispatch_async(_encodingQueue, ^{
-            [self writeString:arrayClose];
-        });
-    }
+    [self writeString:arrayClose];
 }
 
 #pragma mark Private

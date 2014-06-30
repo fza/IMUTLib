@@ -4,12 +4,9 @@
 #import "IMUTLibScreenModuleConstants.h"
 #import "IMUTLibConstants.h"
 #import "IMUTLibMain.h"
-#import "IMUTLibUtil.h"
-#import "IMUTLibFunctions.h"
 
 @implementation IMUTLibScreenModule {
     IMUTLibUIWindowRecorder *_recorder;
-    double _referenceTime;
 }
 
 #pragma mark IMUTLibModule protocol
@@ -26,10 +23,10 @@
     if (self = [super initWithConfig:config]) {
         IMUTLibMediaStreamWriter *mediaStreamWriter = [[IMUTLibMediaStreamManager sharedInstance] writerWithBasename:@"screen"];
         _recorder = [IMUTLibUIWindowRecorder recorderWithMediaStreamWriter:mediaStreamWriter config:config];
-        [_recorder.mediaEncoder addObserver:self
-                                 forKeyPath:@"dateOfFirstFrame"
-                                    options:NSKeyValueObservingOptionNew
-                                    context:NULL];
+        [_recorder addObserver:self
+                    forKeyPath:@"recordingStartDate"
+                       options:NSKeyValueObservingOptionNew
+                       context:NULL];
     }
 
     return self;
@@ -37,31 +34,13 @@
 
 + (NSDictionary *)defaultConfig {
     return @{
-        kIMUTLibScreenModuleConfigHidePasswordInput : cYES,
-        kIMUTLibScreenModuleConfigUseLowResolution : cNO
+        kIMUTLibScreenModuleConfigHidePasswordInput : numYES,
+        kIMUTLibScreenModuleConfigUseLowResolution : numNO
     };
 }
 
-- (void)start {
-    [_recorder startRecording];
-}
-
 - (void)pause {
-    [_recorder stopRecording];
-
-    double duration = _recorder.duration;
-    if (duration > 0) {
-        IMUTLogMain(@"Recorded %.2f seconds using \"%@\"", _recorder.duration, [[self class] moduleName]);
-    }
-}
-
-- (void)resume {
-    [_recorder resetDuration];
-    [self start];
-}
-
-- (void)terminate {
-    [self pause];
+    [self stopTicking];
 }
 
 #pragma mark IMUTLibTimeSource protocol
@@ -75,27 +54,34 @@
 }
 
 - (NSDate *)startDate {
-    return _recorder.dateOfFirstFrame;
+    return _recorder.recordingStartDate;
 }
 
 - (NSTimeInterval)intervalSinceClockStart {
-    if (_recorder.dateOfFirstFrame) {
-        return uptime() - _referenceTime;
+    if (_recorder.recordingStartDate) {
+        return _recorder.recordingDuration;
     }
 
     return 0;
 }
 
+- (BOOL)startTicking {
+    return [_recorder startRecording];
+}
+
+- (void)stopTicking {
+    [_recorder stopRecording];
+}
+
 #pragma mark Private
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
-    if (object == _recorder.mediaEncoder && [keyPath isEqualToString:@"dateOfFirstFrame"]) {
-        if (!_recorder.dateOfFirstFrame) {
-            [self.timeSourceDelegate clockDidStopAfterTimeInterval:(uptime() - _referenceTime)];
-            _referenceTime = 0;
+    if (object == _recorder && [keyPath isEqualToString:@"recordingStartDate"]) {
+        id value = change[NSKeyValueChangeNewKey];
+        if (value == nil || value == [NSNull null]) {
+            [self.timeSourceDelegate clockDidStopAfterTimeInterval:_recorder.lastRecordingDuration];
         } else {
             [self.timeSourceDelegate clockDidStartAtDate:change[@"new"]];
-            _referenceTime = uptime();
         }
     }
 }

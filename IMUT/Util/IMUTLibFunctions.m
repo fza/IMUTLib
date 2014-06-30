@@ -2,10 +2,46 @@
 #import "IMUTLibConstants.h"
 #import "Macros.h"
 
-dispatch_queue_t makeDispatchQueue(NSString *name, dispatch_queue_attr_t attr, long priority) {
+static inline dispatch_queue_t _makeDispatchQueue(NSString *name, dispatch_queue_attr_t attr) {
     name = [NSString stringWithFormat:BUNDLE_IDENTIFIER_CONCAT("%@"), name];
-    dispatch_queue_t queue = dispatch_queue_create([name UTF8String], attr);
-    dispatch_set_target_queue(queue, dispatch_get_global_queue(priority, 0));
+    return dispatch_queue_create([name cStringUsingEncoding:NSASCIIStringEncoding], attr);
+};
+
+dispatch_queue_t mainImutDispatchQueue(long priority) {
+    static dispatch_queue_t highPriorityQueue;
+    static dispatch_queue_t defaultPriorityQueue;
+    static dispatch_queue_t lowPriorityQueue;
+
+    switch (priority) {
+        case DISPATCH_QUEUE_PRIORITY_HIGH:
+            if (!highPriorityQueue) {
+                highPriorityQueue = _makeDispatchQueue(@"main.high", DISPATCH_QUEUE_CONCURRENT);
+                dispatch_set_target_queue(highPriorityQueue, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0));
+            }
+
+            return highPriorityQueue;
+
+        case DISPATCH_QUEUE_PRIORITY_LOW:
+            if (!lowPriorityQueue) {
+                lowPriorityQueue = _makeDispatchQueue(@"main.low", DISPATCH_QUEUE_CONCURRENT);
+                dispatch_set_target_queue(lowPriorityQueue, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0));
+            }
+
+            return lowPriorityQueue;
+
+        default:
+            if (!lowPriorityQueue) {
+                defaultPriorityQueue = _makeDispatchQueue(@"main.default", DISPATCH_QUEUE_CONCURRENT);
+                dispatch_set_target_queue(defaultPriorityQueue, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
+            }
+
+            return defaultPriorityQueue;
+    }
+}
+
+dispatch_queue_t makeDispatchQueue(NSString *name, dispatch_queue_attr_t attr, long priority) {
+    dispatch_queue_t queue = _makeDispatchQueue(name, attr);
+    dispatch_set_target_queue(queue, mainImutDispatchQueue(priority));
 
     return queue;
 }
@@ -22,21 +58,15 @@ BOOL waitForDispatchQueueToBecomeIdle(dispatch_queue_t queue, dispatch_time_t ti
         dispatch_group_leave(group);
     });
 
-    BOOL isIdle = dispatch_group_wait(group, timeout) == 0;
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
-        dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
-    });
-
-    return isIdle;
+    return dispatch_group_wait(group, timeout) == 0;
 }
 
 NSNumber *oBool(BOOL flag) {
     if (flag) {
-        return cYES;
+        return numYES;
     }
 
-    return cNO;
+    return numNO;
 }
 
 NSTimeInterval uptime() {
@@ -63,3 +93,7 @@ NSString *iso8601StringFromDate(NSDate *date) {
 
     return [dateFormatter stringFromDate:date];
 };
+
+void IMUTfree(void *ptr) {
+    free(ptr);
+}

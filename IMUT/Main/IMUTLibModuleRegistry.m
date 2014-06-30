@@ -6,13 +6,11 @@
 #import "IMUTLibAbstractModule.h"
 #import "IMUTLibEventAggregator.h"
 
-static dispatch_queue_t registryDispatchQueue;
-
 @interface IMUTLibModuleRegistry ()
 
 @property(atomic, readwrite, assign) BOOL frozen;
 @property(nonatomic, readwrite, assign) BOOL haveMediaStream;
-@property(nonatomic, readwrite, retain) NSObject <IMUTLibTimeSource> *bestTimeSource;
+@property(nonatomic, readwrite, retain) id <IMUTLibTimeSource> bestTimeSource;
 
 - (BOOL)enableModuleWithName:(NSString *)moduleName config:(NSDictionary *)moduleConfig;
 
@@ -21,30 +19,29 @@ static dispatch_queue_t registryDispatchQueue;
 @end
 
 @implementation IMUTLibModuleRegistry {
-    NSDictionary *_allClasses;
-    NSDictionary *_enabledInstances;
+    NSArray *_modulesOrdered; // Ordered array of modules with the time source module being first
+    NSDictionary *_allModuleClasses;
+    NSDictionary *_enabledInstancesByName;
     NSDictionary *_enabledInstancesByType;
-    NSInteger _bestTimeSourcePreference;
     NSDictionary *_moduleConfigs;
+
+    dispatch_queue_t _dispatch_queue;
 }
 
 SINGLETON
 
-+ (void)initialize {
-    registryDispatchQueue = makeDispatchQueue(@"module-registry", DISPATCH_QUEUE_SERIAL, DISPATCH_QUEUE_PRIORITY_DEFAULT);
-}
-
 - (instancetype)init {
     if (self = [super init]) {
         // At initialization phase these are mutable and later degraded to non-mutable dicts
-        _allClasses = [NSMutableDictionary dictionary];
-        _enabledInstances = [NSMutableDictionary dictionary];
+        _allModuleClasses = [NSMutableDictionary dictionary];
+        _enabledInstancesByName = [NSMutableDictionary dictionary];
         _enabledInstancesByType = [NSMutableDictionary dictionary];
         _moduleConfigs = [NSMutableDictionary dictionary];
 
+        _bestTimeSource = [IMUTLibDefaultTimeSource new];
+
         self.frozen = NO;
         self.haveMediaStream = NO;
-        self.bestTimeSource = nil;
 
         // Observe IMUT notifications
         NSNotificationCenter *defaultCenter = [NSNotificationCenter defaultCenter];
@@ -55,12 +52,14 @@ SINGLETON
                                   name:notificationName
                                 object:nil];
         }
+
+        _dispatch_queue = makeDispatchQueue(@"module-registry", DISPATCH_QUEUE_SERIAL, DISPATCH_QUEUE_PRIORITY_DEFAULT);
     }
 
     return self;
 }
 
-- (NSObject <IMUTLibTimeSource> *)bestTimeSource {
+- (id <IMUTLibTimeSource>)bestTimeSource {
     // As long as initialization of the IMUT library is not done, we don't know the best time source.
     if (!self.frozen) {
         return nil;
@@ -80,7 +79,7 @@ SINGLETON
 }
 
 - (id <IMUTLibModule>)moduleInstanceWithName:(NSString *)name {
-    return _enabledInstances[name];
+    return _enabledInstancesByName[name];
 }
 
 - (void)enableModulesWithConfigs:(NSDictionary *)moduleConfigs {
@@ -104,8 +103,8 @@ SINGLETON
     do {
         if (class_conformsToProtocol(curClass, @protocol(IMUTLibModule))) {
             NSString *moduleName = [moduleClass performSelector:@selector(moduleName)];
-            [(NSMutableDictionary *) _allClasses setObject:moduleClass
-                                                    forKey:moduleName];
+            [(NSMutableDictionary *) _allModuleClasses setObject:moduleClass
+                                                          forKey:moduleName];
 
             return YES;
         }
@@ -126,11 +125,12 @@ SINGLETON
     // The actual notification invocation block
     // We call the respective method on each module directly without a NSNotificationCenter to have
     // control over the execution order.
-    __weak NSDictionary *weakInstances = _enabledInstances;
+    __weak NSArray *weakModuleNames = _modulesOrdered;
+    __weak NSDictionary *weakModuleInstances = _enabledInstancesByName;
     dispatch_block_t notifyBlock = ^{
         NSObject <IMUTLibModule> *moduleInstance;
-        for (NSString *moduleName in weakInstances) {
-            moduleInstance = weakInstances[moduleName];
+        for (NSString *moduleName in weakModuleNames) {
+            moduleInstance = weakModuleInstances[moduleName];
             if ([notification.name isEqualToString:IMUTLibWillStartNotification]) {
                 if ([moduleInstance respondsToSelector:@selector(start)]) {
                     [moduleInstance start];
@@ -155,9 +155,9 @@ SINGLETON
     // The key idea is to invoke the modules in a dedicated dispatch queue i.e. thread to increase
     // application performance.
     if (notification.name == IMUTLibWillPauseNotification || notification.name == IMUTLibWillTerminateNotification) {
-        dispatch_sync(registryDispatchQueue, notifyBlock);
+        notifyBlock();
     } else {
-        dispatch_async(registryDispatchQueue, notifyBlock);
+        dispatch_async(_dispatch_queue, notifyBlock);
     }
 }
 
@@ -173,11 +173,11 @@ SINGLETON
 
 - (BOOL)enableModuleWithName:(NSString *)moduleName config:(NSDictionary *)moduleConfig {
     // Already enabled?
-    if ([_enabledInstances objectForKey:moduleName]) {
+    if ([_enabledInstancesByName objectForKey:moduleName]) {
         return YES;
     }
 
-    Class moduleClass = [_allClasses objectForKey:moduleName];
+    Class moduleClass = [_allModuleClasses objectForKey:moduleName];
     if (moduleClass) {
         // Collect module config
         if ([moduleClass respondsToSelector:@selector(defaultConfig)]) {
@@ -192,7 +192,7 @@ SINGLETON
 
         if (moduleInstance) {
             // Retain the instance
-            [(NSMutableDictionary *) _enabledInstances setObject:moduleInstance forKey:moduleName];
+            [(NSMutableDictionary *) _enabledInstancesByName setObject:moduleInstance forKey:moduleName];
 
             // Classify by module type(s)
             BOOL hasValidModuleType = NO;
@@ -237,9 +237,9 @@ SINGLETON
             Class curClass = moduleClass;
             do {
                 if (class_conformsToProtocol(curClass, @protocol(IMUTLibTimeSource))) {
-                    NSInteger preference = [(NSNumber *) [moduleClass performSelector:@selector(timeSourcePreference)] intValue];
-                    if (preference > _bestTimeSourcePreference) {
-                        _bestTimeSourcePreference = preference;
+                    NSNumber *newTimeSourcePreferenceNumber = [moduleClass performSelector:@selector(timeSourcePreference)];
+                    NSNumber *previousTimeSourcePreferenceNumber = [[(NSObject *) _bestTimeSource class] performSelector:@selector(timeSourcePreference)];
+                    if ([newTimeSourcePreferenceNumber compare:previousTimeSourcePreferenceNumber] == NSOrderedDescending) {
                         self.bestTimeSource = moduleInstance;
                     }
 
@@ -253,7 +253,7 @@ SINGLETON
         }
     }
 
-    IMUTLogDebug(@"Unable to enable module \"%@\".", moduleName);
+    IMUTLogMain(@"Unable to enable module \"%@\".", moduleName);
 
     return NO;
 }
@@ -263,14 +263,32 @@ SINGLETON
         if (!self.frozen) {
             self.frozen = YES;
 
-            _allClasses = [_allClasses copy];
-            _enabledInstances = [_enabledInstances copy];
+            _allModuleClasses = [_allModuleClasses copy];
+            _enabledInstancesByName = [_enabledInstancesByName copy];
             _enabledInstancesByType = [_enabledInstancesByType copy];
             _moduleConfigs = [_moduleConfigs copy];
 
-            [IMUTLibUtil postNotificationOnMainThreadWithNotificationName:IMUTLibModuleRegistryDidFreezeNotification
-                                                                   object:self
-                                                            waitUntilDone:YES];
+            id <IMUTLibTimeSource> timeSource = self.bestTimeSource;
+            BOOL timeSourceIsModule = [[(NSObject *) timeSource class] conformsToProtocol:@protocol(IMUTLibModule)];
+
+            NSMutableArray *modules = [NSMutableArray arrayWithCapacity:_enabledInstancesByName.count];
+            for (NSString *moduleName in _enabledInstancesByName) {
+                if (timeSourceIsModule && timeSource == _enabledInstancesByName[moduleName]) {
+                    [modules insertObject:moduleName atIndex:0];
+                } else {
+                    [modules addObject:moduleName];
+                }
+            }
+            _modulesOrdered = [modules copy];
+
+            if ([(NSObject *) timeSource respondsToSelector:@selector(denoteAsPrimaryTimeSource)]) {
+                [timeSource denoteAsPrimaryTimeSource];
+            }
+
+            [IMUTLibUtil postNotificationName:IMUTLibModuleRegistryDidFreezeNotification
+                                       object:self
+                                 onMainThread:NO
+                                waitUntilDone:YES];
         }
     }
 }

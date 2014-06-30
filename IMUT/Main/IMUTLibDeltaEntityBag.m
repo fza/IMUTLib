@@ -31,8 +31,8 @@
     return _store.count;
 }
 
-- (void)mergeWithCache:(IMUTLibDeltaEntityBag *)cache {
-    [_store addEntriesFromDictionary:[cache backStore]];
+- (void)mergeWithBag:(IMUTLibDeltaEntityBag *)bag {
+    [_store addEntriesFromDictionary:[bag backStore]];
 }
 
 - (void)addDeltaEntity:(IMUTLibDeltaEntity *)deltaEntity {
@@ -56,7 +56,7 @@
 }
 
 - (instancetype)copy {
-    return [[[self class] alloc] initWithBackStore:[_store copy]];
+    return [[[self class] alloc] initWithBackStore:_store];
 }
 
 #pragma mark Private
@@ -65,9 +65,9 @@
     return _store;
 }
 
-- (instancetype)initWithBackStore:(NSMutableDictionary *)store {
+- (instancetype)initWithBackStore:(NSDictionary *)store {
     if (self = [super init]) {
-        _store = store;
+        _store = [NSMutableDictionary dictionaryWithDictionary:store];
     }
 
     return self;

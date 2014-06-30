@@ -34,6 +34,13 @@
 // It must be guaranteed to return a value equal or greater the previous value.
 - (NSTimeInterval)intervalSinceClockStart;
 
+// Called when the time source should set its time base and start running.
+// Return NO if any error occured.
+- (BOOL)startTicking;
+
+// Called when the timer should stop
+- (void)stopTicking;
+
 @optional
 // Informs the receiver that the IMUT runtime decided to use it as primary time source.
 - (void)denoteAsPrimaryTimeSource;

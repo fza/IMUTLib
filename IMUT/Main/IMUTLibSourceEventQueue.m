@@ -6,25 +6,29 @@
 #import "IMUTLibEventSynchronizer.h"
 #import "IMUTLibModuleRegistry.h"
 
-static dispatch_queue_t sourceEventCollectorDispatchQueue;
-
 @interface IMUTLibSourceEventQueue ()
 
-- (void)synchronizerDidStart;
+- (void)synchronizerDidStart:(NSNotification *)notification;
 
 @end
 
-@implementation IMUTLibSourceEventQueue
+@implementation IMUTLibSourceEventQueue {
+    dispatch_queue_t _dispatchQueue;
+}
 
 SINGLETON
 
-+ (void)initialize {
-    sourceEventCollectorDispatchQueue = makeDispatchQueue(@"source_event_queue", DISPATCH_QUEUE_SERIAL, DISPATCH_QUEUE_PRIORITY_HIGH);
+- (instancetype)init {
+    if (self = [super init]) {
+        _dispatchQueue = makeDispatchQueue(@"source-event-queue", DISPATCH_QUEUE_SERIAL, DISPATCH_QUEUE_PRIORITY_HIGH);
 
-    [[NSNotificationCenter defaultCenter] addObserver:[self sharedInstance]
-                                             selector:@selector(synchronizerDidStart)
-                                                 name:IMUTLibEventSynchronizerDidStartNotification
-                                               object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(synchronizerDidStart:)
+                                                     name:IMUTLibEventSynchronizerDidStartNotification
+                                                   object:nil];
+    }
+
+    return self;
 }
 
 - (void)enqueueSourceEvent:(id <IMUTLibSourceEvent>)sourceEvent {
@@ -33,7 +37,7 @@ SINGLETON
     }
 
     // This runs asynchronously to increase application performance
-    dispatch_async(sourceEventCollectorDispatchQueue, ^{
+    dispatch_async(_dispatchQueue, ^{
         NSString *eventName = [sourceEvent eventName];
         IMUTLibEventSynchronizer *synchronizer = [IMUTLibEventSynchronizer sharedInstance];
         IMUTLibDeltaEntity *newDeltaEntity, *lastPersistedDeltaEntity = [synchronizer persistedEntityForKey:eventName];
@@ -70,15 +74,15 @@ SINGLETON
 #pragma mark Private
 
 // Collect and enqueue initial events
-- (void)synchronizerDidStart {
+- (void)synchronizerDidStart:(NSNotification *)notification {
     id <IMUTLibSourceEvent> sourceEvent;
     NSSet *sourceEvents;
     for (id <IMUTLibModule> moduleInstance in [[IMUTLibModuleRegistry sharedInstance] moduleInstancesWithType:IMUTLibModuleTypeEvented]) {
-        if ([(NSObject *) moduleInstance respondsToSelector:@selector(eventsWithCurrentState)]) {
+        if([(NSObject *) moduleInstance respondsToSelector:@selector(eventsWithCurrentState)]) {
             sourceEvents = [moduleInstance eventsWithCurrentState];
             if (sourceEvents) {
                 for (sourceEvent in sourceEvents) {
-                    [[IMUTLibEventSynchronizer sharedInstance] enqueueDeltaEntity:[IMUTLibDeltaEntity deltaEntityWithSourceEvent:sourceEvent]];
+                    [notification.object enqueueDeltaEntity:[IMUTLibDeltaEntity deltaEntityWithSourceEvent:sourceEvent]];
                 }
             }
         }

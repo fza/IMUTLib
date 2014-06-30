@@ -48,7 +48,7 @@ DESIGNATED_INIT
             return;
         }
 
-        if ([obj isEqual:cYES]) {
+        if ([obj isEqual:numYES]) {
             moduleConfigs[key] = @{};
             [enabledModuleNames addObject:key];
         } else if ([obj isKindOfClass:objc_getClass("NSDictionary")]) {

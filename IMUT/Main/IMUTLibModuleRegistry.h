@@ -15,7 +15,7 @@
 @property(nonatomic, readonly, assign) BOOL haveMediaStream;
 
 // Get the one module which implements the IMUTLibTimeSource protocol and has the highest preference
-@property(nonatomic, readonly, retain) NSObject <IMUTLibTimeSource> *bestTimeSource;
+@property(nonatomic, readonly, retain) id <IMUTLibTimeSource> bestTimeSource;
 
 SINGLETON_INTERFACE
 
@@ -34,7 +34,7 @@ SINGLETON_INTERFACE
 // Notify modules. Ensures that modules are called in order of the dependency chain.
 - (void)notifyModulesWithNotification:(NSNotification *)notification;
 
-// Get the configuration for a module, only available when the registry is frozen
+// Get the configuration for a module. Only available when the registry is frozen
 - (NSDictionary *)configForModuleWithName:(NSString *)moduleName;
 
 @end

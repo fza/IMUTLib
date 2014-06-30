@@ -19,6 +19,6 @@
 
 - (void)beginEncoding;
 
-- (void)endEncodingWaitUntilDone:(BOOL)waitUntilDone;
+- (void)endEncoding;
 
 @end

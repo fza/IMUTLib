@@ -30,7 +30,7 @@
 
 + (id)writerWithBasename:(NSString *)basename;
 
-- (void)addMediaSourceWithEncoder:(id <IMUTLibMediaEncoder>)encoder;
+- (void)addMediaEncoder:(id <IMUTLibMediaEncoder>)encoder;
 
 // Must be invoked when the writer should end streaming data to the current media file an then stop
 // writing at all.

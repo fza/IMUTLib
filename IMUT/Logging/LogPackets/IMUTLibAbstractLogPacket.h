@@ -6,9 +6,6 @@
     NSMutableDictionary *_additionalParameters;
 }
 
-- (NSMutableDictionary *)baseDictionaryWithSessionId:(NSString *)sessionId
-                                      sequenceNumber:(unsigned long)sequenceNumber;
-
 - (NSDictionary *)parameters;
 
 - (void)setAdditionalParameters:(NSDictionary *)parameters;

@@ -13,11 +13,13 @@ static NSString *kParamParams = @"params";
 @property(nonatomic, readwrite, retain) IMUTLibDeltaEntityBag *deltaEntityBag;
 @property(nonatomic, readwrite, assign) NSTimeInterval relativeTime;
 
-- (instancetype)initWithDeltaEntityCache:(IMUTLibDeltaEntityBag *)deltaEntityCache timeIntervalSinceStart:(NSTimeInterval)timeInterval;
+- (instancetype)initWithDeltaEntityBag:(IMUTLibDeltaEntityBag *)deltaEntityBag timeIntervalSinceStart:(NSTimeInterval)timeInterval;
 
 @end
 
-@implementation IMUTLibEventsLogPacket
+@implementation IMUTLibEventsLogPacket {
+    IMUTLibDeltaEntityBag *_deltaEntityBag;
+}
 
 DESIGNATED_INIT
 
@@ -25,14 +27,16 @@ DESIGNATED_INIT
     return IMUTLibLogPacketTypeEvents;
 }
 
-+ (instancetype)packetWithDeltaEntityCache:(IMUTLibDeltaEntityBag *)deltaEntityCache timeIntervalSinceStart:(NSTimeInterval)timeInterval {
-    return [[self alloc] initWithDeltaEntityCache:deltaEntityCache
-                           timeIntervalSinceStart:(NSTimeInterval) timeInterval];
++ (instancetype)packetWithDeltaEntityBag:(IMUTLibDeltaEntityBag *)deltaEntityBag timeIntervalSinceStart:(NSTimeInterval)timeInterval {
+    return [[self alloc] initWithDeltaEntityBag:deltaEntityBag
+                         timeIntervalSinceStart:(NSTimeInterval) timeInterval];
+}
+
+- (void)mergeIn:(IMUTLibEventsLogPacket *)logPacket {
+    [_deltaEntityBag mergeWithBag:logPacket.deltaEntityBag];
 }
 
 - (NSDictionary *)parameters {
-    NSMutableDictionary * dictionary = [NSMutableDictionary dictionary];
-
     NSMutableArray *events = [NSMutableArray array];
     for (IMUTLibDeltaEntity *deltaEntity in self.deltaEntityBag.all) {
         [events addObject:@{
@@ -42,19 +46,17 @@ DESIGNATED_INIT
         }];
     }
 
-    [dictionary addEntriesFromDictionary:@{
+    return @{
         kParamRelativeTime : @(round(self.relativeTime * 100.0) / 100.0),
         kParamEvents : events
-    }];
-
-    return dictionary;
+    };
 }
 
 #pragma mark Private
 
-- (instancetype)initWithDeltaEntityCache:(IMUTLibDeltaEntityBag *)deltaEntityCache timeIntervalSinceStart:(NSTimeInterval)timeInterval {
+- (instancetype)initWithDeltaEntityBag:(IMUTLibDeltaEntityBag *)deltaEntityBag timeIntervalSinceStart:(NSTimeInterval)timeInterval {
     if (self = [super init]) {
-        self.deltaEntityBag = deltaEntityCache;
+        self.deltaEntityBag = deltaEntityBag;
         self.relativeTime = timeInterval;
     }
 

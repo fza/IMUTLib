@@ -9,7 +9,7 @@
 @property(nonatomic, readonly, retain) NSArray *all;
 @property(nonatomic, readonly, assign) NSUInteger count;
 
-- (void)mergeWithCache:(IMUTLibDeltaEntityBag *)cache;
+- (void)mergeWithBag:(IMUTLibDeltaEntityBag *)bag;
 
 - (void)addDeltaEntity:(IMUTLibDeltaEntity *)deltaEntity;
 

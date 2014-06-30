@@ -1,20 +1,18 @@
 #import <Foundation/Foundation.h>
-#import "IMUTLibMediaFrameBasedVideoEncoder.h"
+#import "IMUTLibVideoEncoder.h"
 #import "IMUTLibMediaStreamWriter.h"
 
 @interface IMUTLibUIWindowRecorder : NSObject <IMUTLibMediaEncoderVideoDelegate>
 
-@property(nonatomic, readonly, retain) NSDate *dateOfFirstFrame;
+@property(atomic, readonly, retain) NSDate *recordingStartDate;
 
-@property(nonatomic, readonly, retain) IMUTLibMediaFrameBasedVideoEncoder *mediaEncoder;
+@property(nonatomic, readonly, assign) NSTimeInterval recordingDuration;
 
-@property(nonatomic, readonly, assign) double duration;
+@property(nonatomic, readonly, assign) NSTimeInterval lastRecordingDuration;
 
 + (instancetype)recorderWithMediaStreamWriter:(IMUTLibMediaStreamWriter *)mediaStreamWriter config:(NSDictionary *)config;
 
-- (void)resetDuration;
-
-- (void)startRecording;
+- (BOOL)startRecording;
 
 - (void)stopRecording;
 

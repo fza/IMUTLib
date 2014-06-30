@@ -13,6 +13,10 @@
 
 @property(nonatomic, readwrite, assign) NSTimeInterval syncTimeInterval;
 
+@property(nonatomic, readonly, retain) IMUTLibLogPacketStreamWriter *logWriter;
+
+@property(nonatomic, readonly) unsigned long eventCount;
+
 SINGLETON_INTERFACE
 
 // Return the entity last persisted for a given key
@@ -25,5 +29,11 @@ SINGLETON_INTERFACE
 // entity equals the most recent one, it must dequeue the currently
 // queued delta entity, so that the synchronizer won't persist it again.
 - (void)dequeueDeltaEntityWithKey:(NSString *)key;
+
+// Clears the cache
+- (void)clearCache;
+
+// Aligns a time interval with the sync time interval
+- (NSTimeInterval)alignTimeInterval:(NSTimeInterval)timeInterval;
 
 @end

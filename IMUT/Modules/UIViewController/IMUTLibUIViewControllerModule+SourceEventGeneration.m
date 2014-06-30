@@ -1,11 +1,10 @@
 #import "IMUTLibUIViewControllerModule+SourceEventGeneration.h"
-#import "IMUTLibWeakWrappedObject.h"
 #import "IMUTLibSourceEventQueue.h"
 #import "IMUTLibUIViewControllerModuleConstants.h"
 #import "IMUTLibUIViewControllerObserverRegistry.h"
 #import "IMUTLibUtil.h"
 
-static IMUTLibWeakWrappedObject *wrappedFrontMostViewController;
+static NSValue *wrappedFrontMostViewController;
 static int maxViewControllerNestingLevel = 25;
 static BOOL haveHierarchy = NO;
 static BOOL stopped = YES;
@@ -14,7 +13,7 @@ static BOOL stopped = YES;
 
 - (NSMutableArray *)mutableObjectHierarchy;
 
-- (void)setFrontMostViewControllerWithWrapper:(IMUTLibWeakWrappedObject *)frontMostViewController;
+- (void)setFrontMostViewControllerWithWrapper:(NSValue *)wrappedViewController;
 
 - (void)rebuildEntireObjectHierarchy;
 
@@ -48,7 +47,7 @@ static BOOL stopped = YES;
     return objectHierarchy;
 }
 
-- (void)setFrontMostViewControllerWithWrapper:(IMUTLibWeakWrappedObject *)wrappedViewController {
+- (void)setFrontMostViewControllerWithWrapper:(NSValue *)wrappedViewController {
     @synchronized (self) {
         if (!wrappedViewController) {
             wrappedFrontMostViewController = nil;
@@ -56,13 +55,14 @@ static BOOL stopped = YES;
             return;
         }
 
-        __strong UIViewController *oldController = wrappedFrontMostViewController.wrappedObject;
-        __strong UIViewController *newController = wrappedViewController.wrappedObject;
+        __strong UIViewController *oldController = [wrappedFrontMostViewController nonretainedObjectValue];
+        __strong UIViewController *newController = [wrappedViewController nonretainedObjectValue];
 
         if (newController && (!oldController || oldController != newController)) {
-            [IMUTLibUtil postNotificationOnMainThreadWithNotificationName:IMUTLibFrontMostViewControllerDidChangeNotification
-                                                                   object:newController
-                                                            waitUntilDone:NO];
+            [IMUTLibUtil postNotificationName:IMUTLibFrontMostViewControllerDidChangeNotification
+                                       object:newController
+                                 onMainThread:YES
+                                waitUntilDone:NO];
 
             IMUTLogDebug(@"new vc: %@", newController);
 
@@ -104,7 +104,7 @@ static BOOL stopped = YES;
 - (void)doInspectObject:(__strong id)object {
     NSMutableArray *objectHierarchy = [self mutableObjectHierarchy];
     __strong id childObject;
-    IMUTLibWeakWrappedObject *objectWrapper;
+    NSValue *objectWrapper;
     NSUInteger nestingLevel = objectHierarchy.count;
 
     @synchronized (self) {
@@ -122,7 +122,7 @@ static BOOL stopped = YES;
         while (true) {
             [self ensureObservingObject:object];
 
-            objectWrapper = [IMUTLibWeakWrappedObject wrapperForObject:object];
+            objectWrapper = [NSValue valueWithNonretainedObject:object];
             [objectHierarchy addObject:objectWrapper];
             childObject = [self childObjectForObject:object];
 
@@ -194,8 +194,8 @@ static BOOL stopped = YES;
 
 - (NSUInteger)indexForObject:(__strong id)searchObject {
     __block NSUInteger foundAtIndex = NSNotFound;
-    [[self mutableObjectHierarchy] enumerateObjectsUsingBlock:^(IMUTLibWeakWrappedObject *objectWrapper, NSUInteger index, BOOL *stop){
-        __strong id wrappedObject = objectWrapper.wrappedObject;
+    [[self mutableObjectHierarchy] enumerateObjectsUsingBlock:^(NSValue *objectWrapper, NSUInteger index, BOOL *stop){
+        __strong id wrappedObject = [objectWrapper nonretainedObjectValue];
 
         if (wrappedObject && searchObject == wrappedObject) {
             foundAtIndex = index;
@@ -245,7 +245,7 @@ static BOOL stopped = YES;
 }
 
 - (UIViewController *)frontMostViewController {
-    return [wrappedFrontMostViewController wrappedObject];
+    return [wrappedFrontMostViewController nonretainedObjectValue];
 }
 
 @end

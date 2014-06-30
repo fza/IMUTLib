@@ -22,19 +22,12 @@ typedef NS_ENUM(NSUInteger, IMUTLibLogPacketEncoderType) {
 // The basename for files to create
 @property(nonatomic, readonly, retain) NSString *basename;
 
-// A flag to pause/resume writing
-@property(atomic, readwrite, assign) BOOL mayWrite;
-
 // The delegate (= event synchronizer)
 @property(nonatomic, readwrite, weak) id <IMUTLibStreamLogWriterDelegate> delegate;
 
-+ (instancetype)writerWithBasename:(NSString *)basename
-                         sessionId:(NSString *)sessionId
-                 packetEncoderType:(IMUTLibLogPacketEncoderType)encoderType;
++ (instancetype)writerWithBasename:(NSString *)basename packetEncoderType:(IMUTLibLogPacketEncoderType)encoderType;
 
-+ (instancetype)writerWithBasename:(NSString *)basename
-                         sessionId:(NSString *)sessionId
-                     packetEncoder:(id <IMUTLibLogPacketStreamEncoder>)encoder;
+- (void)newFile;
 
 - (void)enqueuePacket:(id <IMUTLibLogPacket>)logPacket;
 

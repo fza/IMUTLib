@@ -70,7 +70,7 @@ static dispatch_queue_t finalizationDispatchQueue;
     }
 }
 
-- (void)addMediaSourceWithEncoder:(id <IMUTLibMediaEncoder>)encoder {
+- (void)addMediaEncoder:(id <IMUTLibMediaEncoder>)encoder {
     switch (encoder.mediaSourceType) {
         case IMUTLibMediaSourceTypeAudio:
             NSAssert(!self.hasAudioTrack, @"cannot replace audio media source");
@@ -85,7 +85,7 @@ static dispatch_queue_t finalizationDispatchQueue;
             _videoEncoder = encoder;
     }
 
-    [encoder setDelegate:self];
+    encoder.delegate = self;
 }
 
 - (void)finalizeAsync:(BOOL)async {
@@ -133,6 +133,23 @@ static dispatch_queue_t finalizationDispatchQueue;
     return nil;
 }
 
+#pragma mark IMUTLibMediaStreamSourceWriterDelegate
+
+- (void)encoderWillBeginProducingStream {
+    @synchronized (self) {
+        if (!self.writing) {
+            self.writing = YES;
+
+            [self startWriting];
+        }
+    }
+}
+
+- (void)encoderStoppedProducingStream {
+    // Only finalize synchronously if the app is about to terminate
+    [self finalizeAsync:![[IMUTLibMain imut] isTerminated]];
+}
+
 #pragma mark Private
 
 - (id)initWithBasename:(NSString *)basename {
@@ -158,7 +175,7 @@ static dispatch_queue_t finalizationDispatchQueue;
                                                      fileType:self.fileType
                                                         error:&error];
 
-    NSAssert(error == nil, @"Unable to create an AVAssetWriter");
+    NSAssert(!error, @"Unable to create an AVAssetWriter");
 
     AVAssetWriterInput *input;
     if (_audioEncoder) {
@@ -176,23 +193,6 @@ static dispatch_queue_t finalizationDispatchQueue;
 
     [_currentAVAssetWriter startWriting];
     [_currentAVAssetWriter startSessionAtSourceTime:kCMTimeZero];
-}
-
-#pragma mark IMUTLibMediaStreamSourceWriterDelegate
-
-- (void)encoderWillBeginProducingStream {
-    @synchronized (self) {
-        if (!self.writing) {
-            self.writing = YES;
-
-            [self startWriting];
-        }
-    }
-}
-
-- (void)encoderStoppedProducingStream {
-    // Only finalize synchronously if the app is about to terminate
-    [self finalizeAsync:![[IMUTLibMain imut] isTerminated]];
 }
 
 @end

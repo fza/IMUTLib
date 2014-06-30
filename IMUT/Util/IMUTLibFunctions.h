@@ -1,11 +1,41 @@
 #import <Foundation/Foundation.h>
 #import <dispatch/queue.h>
 
-// Convenience method to create a new dispatch queue
+
+// Functions to work with dispatch queues -->
+
+// The main dispatch all IMUT specific operations should run in, if
+// they don't need to perform actions on the main thread. Having all
+// sorts of operations running in the same dispatch queue we can easily
+// invalidate these queues when we would need to in later versions.
+// Currently this is only for convenience. Modules must not use this
+// method, instead use the function `makeDispatchQueue`.
+dispatch_queue_t mainImutDispatchQueue(long priority);
+
+// Convenience method to create a new dispatch queue that is tied to the
+// main imut dispatch queue
 dispatch_queue_t makeDispatchQueue(NSString *name, dispatch_queue_attr_t attr, long priority);
 
 // Wait for a dispatch queue until it becomes idle
+// Warning: Do not use when the application is about to terminate!
 BOOL waitForDispatchQueueToBecomeIdle(dispatch_queue_t queue, dispatch_time_t timeout);
+
+
+
+
+
+
+// Memory management -->
+
+void *IMUTAllocate(size_t size);
+
+void IMUTDeallocate(void *ptr);
+
+
+
+
+
+// Misc. functions -->
 
 // Convenience method that returns a static NSNumber instance for a boolean value
 NSNumber *oBool(BOOL flag);

@@ -16,7 +16,7 @@
 
 + (NSDictionary *)defaultConfig {
     return @{
-        kIMUTLibUIViewControllerModuleConfigUseFullClassName : cNO
+        kIMUTLibUIViewControllerModuleConfigUseFullClassName : numNO
     };
 }
 

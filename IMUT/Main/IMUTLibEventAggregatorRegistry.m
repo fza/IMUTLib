@@ -5,9 +5,7 @@
 
 @interface IMUTLibEventAggregatorRegistry ()
 
-- (void)imutDidStart:(NSNotification *)notification;
-
-- (void)imutRegistryDidFreeze:(NSNotification *)notification;
+- (void)moduleRegistryDidFreeze:(NSNotification *)notification;
 
 @end;
 
@@ -18,23 +16,15 @@
 
 SINGLETON
 
-+ (void)initialize {
-    IMUTLibEventAggregatorRegistry *sharedInstance = [self sharedInstance];
-    [[NSNotificationCenter defaultCenter] addObserver:sharedInstance
-                                             selector:@selector(imutRegistryDidFreeze:)
-                                                 name:IMUTLibModuleRegistryDidFreezeNotification
-                                               object:nil];
-
-    [[NSNotificationCenter defaultCenter] addObserver:sharedInstance
-                                             selector:@selector(imutDidStart:)
-                                                 name:IMUTLibWillStartNotification
-                                               object:nil];
-}
-
 - (instancetype)init {
     if (self = [super init]) {
         _aggregatorBlocks = [NSMutableDictionary dictionary];
         _frozen = NO;
+        
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(moduleRegistryDidFreeze:)
+                                                     name:IMUTLibModuleRegistryDidFreezeNotification
+                                                   object:nil];
     }
 
     return self;
@@ -60,25 +50,9 @@ SINGLETON
 
 #pragma mark Private
 
-// Degrade aggregator blocks dictionary to free some memory
-- (void)imutDidStart:(NSNotification *)notification {
-    [[NSNotificationCenter defaultCenter] removeObserver:self
-                                                    name:IMUTLibWillStartNotification
-                                                  object:nil];
-
-    // Wrapping this in a once token, though the start event should only occur once
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        // Degrade aggregator blocks dictionary (optimization)
-        _aggregatorBlocks = [_aggregatorBlocks copy];
-    });
-}
-
 // Let the modules register their aggregator blocks
-- (void)imutRegistryDidFreeze:(NSNotification *)notification {
-    [[NSNotificationCenter defaultCenter] removeObserver:self
-                                                    name:IMUTLibModuleRegistryDidFreezeNotification
-                                                  object:nil];
+- (void)moduleRegistryDidFreeze:(NSNotification *)notification {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 
     for (id moduleInstance in [[IMUTLibModuleRegistry sharedInstance] moduleInstancesWithType:IMUTLibModuleTypeEvented]) {
         Class curClass = [moduleInstance class];
@@ -89,6 +63,8 @@ SINGLETON
             }
         } while ((curClass = [curClass superclass]));
     }
+    
+    _aggregatorBlocks = [_aggregatorBlocks copy];
 
     _frozen = YES;
 }

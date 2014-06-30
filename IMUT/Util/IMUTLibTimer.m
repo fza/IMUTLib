@@ -1,83 +1,94 @@
+#import <libkern/OSAtomic.h>
 #import "IMUTLibTimer.h"
 #import "Macros.h"
-#import <libkern/OSAtomic.h>
+
+#define LOCK_INVALID 1
+#define LOCK_PAUSED 2
+#define TEST_INVALID (LOCK_INVALID == OSAtomicAnd32OrigBarrier(LOCK_INVALID, &_flags))
+#define TEST_PAUSED (LOCK_PAUSED == OSAtomicAnd32OrigBarrier(LOCK_PAUSED, &_flags))
+#define LOCK(value) (0 == OSAtomicTestAndSetBarrier(8 - value, &_flags))
+#define UNLOCK(value) (0 == OSAtomicTestAndClearBarrier(8 - value, &_flags))
 
 @interface IMUTLibTimer ()
 
-@property(nonatomic, weak) id target;
-@property(nonatomic, assign) SEL selector;
-@property(nonatomic, retain) id userInfo;
-@property(nonatomic, assign) BOOL repeats;
-@property(nonatomic, retain) dispatch_queue_t privateSerialQueue;
-@property(nonatomic, retain) dispatch_source_t timer;
+- (void)setupTimer;
+
+- (void)teardownTimer;
+
+- (void)resetTimerProperties;
 
 - (void)timerFired;
 
+- (void)callSelectorOnTarget;
+
 @end
 
-// This class is heavily influenced by MSWeakTimer (c) MindSnacks
-// @see https://github.com/mindsnacks/MSWeakTimer
 @implementation IMUTLibTimer {
-    struct {
-        uint32_t timerIsInvalidated;
-    } _timerFlags;
+    __weak id _target;
+    SEL _selector;
+    BOOL _repeats;
+
+    dispatch_queue_t _privateSerialQueue;
+    dispatch_source_t _timer;
+
+    NSTimeInterval _timeInterval;
+    NSTimeInterval _tolerance;
+
+    OSSpinLock _callLock;
+
+    uint32_t _flags; // Initialized to zero by runtime
+    BOOL _scheduled;
 }
 
-@synthesize timeInterval = _timeInterval;
-@synthesize tolerance = _tolerance;
+@dynamic timeInterval;
+@dynamic tolerance;
+@dynamic scheduled;
+@dynamic invalidated;
 
-- (id)initWithTimeInterval:(NSTimeInterval)timeInterval
-                    target:(id)target
-                  selector:(SEL)selector
-                  userInfo:(id)userInfo
-                   repeats:(BOOL)repeats
-             dispatchQueue:(dispatch_queue_t)dispatchQueue {
-    NSParameterAssert(target);
-    NSParameterAssert(selector);
-    NSParameterAssert(dispatchQueue);
+DESIGNATED_INIT
 
-    if ((self = [super init])) {
-        _timeInterval = timeInterval;
-        self.target = target;
-        self.selector = selector;
-        self.userInfo = userInfo;
-        self.repeats = repeats;
-
-        NSString *privateQueueName = [NSString stringWithFormat:BUNDLE_IDENTIFIER_CONCAT("timer.%p"),
-                                                                (__bridge void *) self];
-        self.privateSerialQueue = dispatch_queue_create([privateQueueName cStringUsingEncoding:NSASCIIStringEncoding], DISPATCH_QUEUE_SERIAL);
-        dispatch_set_target_queue(self.privateSerialQueue, dispatchQueue);
-        self.timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, self.privateSerialQueue);
-    }
-
-    return self;
-}
-
-- (id)init {
-    return [self initWithTimeInterval:0
-                               target:nil
-                             selector:NULL
-                             userInfo:nil
-                              repeats:NO
-                        dispatchQueue:nil];
-}
-
-+ (instancetype)scheduledTimerWithTimeInterval:(NSTimeInterval)timeInterval
-                                        target:(id)target
-                                      selector:(SEL)selector
-                                      userInfo:(id)userInfo
-                                       repeats:(BOOL)repeats
-                                 dispatchQueue:(dispatch_queue_t)dispatchQueue {
++ (instancetype)scheduleTimerWithTimeInterval:(NSTimeInterval)timeInterval target:(id)target selector:(SEL)selector repeats:(BOOL)repeats dispatchQueue:(dispatch_queue_t)dispatchQueue {
     IMUTLibTimer *timer = [[self alloc] initWithTimeInterval:timeInterval
                                                       target:target
                                                     selector:selector
-                                                    userInfo:userInfo
                                                      repeats:repeats
                                                dispatchQueue:dispatchQueue];
 
     [timer schedule];
 
     return timer;
+}
+
++ (instancetype)timerWithTimeInterval:(NSTimeInterval)timeInterval target:(id)target selector:(SEL)selector repeats:(BOOL)repeats dispatchQueue:(dispatch_queue_t)dispatchQueue {
+    return [[self alloc] initWithTimeInterval:timeInterval
+                                       target:target
+                                     selector:selector
+                                      repeats:repeats
+                                dispatchQueue:dispatchQueue];
+}
+
+- (instancetype)initWithTimeInterval:(NSTimeInterval)timeInterval target:(id)target selector:(SEL)selector repeats:(BOOL)repeats dispatchQueue:(dispatch_queue_t)dispatchQueue {
+    NSAssert(target && [target respondsToSelector:selector], @"Object does not respond to given selector.");
+    NSAssert(dispatchQueue, @"Uninitialized dispatch queue given.");
+
+    if (self = [super init]) {
+        _target = target;
+        _selector = selector;
+        _repeats = repeats;
+
+        _timeInterval = timeInterval;
+        _tolerance = 0;
+
+        _scheduled = NO;
+
+        _callLock = OS_SPINLOCK_INIT;
+
+        NSString *name = [NSString stringWithFormat:BUNDLE_IDENTIFIER_CONCAT("timer.%p"), (__bridge void *) self];
+        _privateSerialQueue = dispatch_queue_create([name cStringUsingEncoding:NSASCIIStringEncoding], DISPATCH_QUEUE_SERIAL);
+        dispatch_set_target_queue(_privateSerialQueue, dispatchQueue);
+    }
+
+    return self;
 }
 
 - (void)dealloc {
@@ -95,7 +106,9 @@
         if (timeInterval != _timeInterval) {
             _timeInterval = timeInterval;
 
-            [self resetTimerProperties];
+            if (_scheduled && !TEST_INVALID && !TEST_PAUSED) {
+                [self resetTimerProperties];
+            }
         }
     }
 }
@@ -111,72 +124,149 @@
         if (tolerance != _tolerance) {
             _tolerance = tolerance;
 
-            [self resetTimerProperties];
+            if (_scheduled && !TEST_INVALID && !TEST_PAUSED) {
+                [self resetTimerProperties];
+            }
         }
     }
 }
 
+- (BOOL)scheduled {
+    return _scheduled;
+}
+
+- (BOOL)paused {
+    return TEST_PAUSED;
+}
+
+- (BOOL)invalidated {
+    return TEST_INVALID;
+}
+
+- (BOOL)schedule {
+    @synchronized (self) {
+        if (!_scheduled && !TEST_INVALID) {
+            _scheduled = YES;
+
+            [self setupTimer];
+        }
+    }
+
+    return _scheduled;
+}
+
+- (void)invalidate {
+    if (LOCK(LOCK_INVALID)) {
+        [self teardownTimer];
+    }
+}
+
+- (BOOL)pause {
+    @synchronized (self) {
+        if (_scheduled && !TEST_INVALID && LOCK(LOCK_PAUSED)) {
+            [self teardownTimer];
+
+            return YES;
+        }
+    }
+
+    return NO;
+}
+
+- (BOOL)resume {
+    @synchronized (self) {
+        if (!_scheduled) {
+            return [self schedule];
+        } else if (!TEST_INVALID && UNLOCK(LOCK_PAUSED) && dispatch_source_testcancel(_timer)) {
+            [self setupTimer];
+
+            return YES;
+        }
+    }
+
+    return NO;
+}
+
+- (void)fireAndPause {
+    if (!TEST_INVALID && !TEST_PAUSED) {
+        [self pause];
+
+        // If the timer is currently executing, we must wait
+        OSSpinLockLock(&_callLock);
+        [self callSelectorOnTarget];
+        OSSpinLockUnlock(&_callLock);
+
+        return;
+    }
+}
+
+#pragma mark Private
+
+- (void)setupTimer {
+    _timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, _privateSerialQueue);
+
+    [self resetTimerProperties];
+
+    __weak IMUTLibTimer *weakSelf = self;
+    dispatch_source_set_event_handler(_timer, ^{
+        [weakSelf timerFired];
+    });
+
+    dispatch_resume(_timer);
+}
+
+- (void)teardownTimer {
+    dispatch_source_cancel(_timer);
+}
+
 - (void)resetTimerProperties {
-    uint64_t intervalInNanoseconds = (uint64_t) (self.timeInterval * NSEC_PER_SEC);
+    uint64_t intervalInNanoseconds = (uint64_t) (_timeInterval * NSEC_PER_SEC);
     uint64_t toleranceInNanoseconds = (uint64_t) (_tolerance * NSEC_PER_SEC);
 
-    dispatch_source_set_timer(
-        self.timer,
+    dispatch_source_set_timer(_timer,
         dispatch_time(DISPATCH_TIME_NOW, intervalInNanoseconds),
         intervalInNanoseconds,
         toleranceInNanoseconds
     );
 }
 
-- (void)schedule {
-    [self resetTimerProperties];
+- (void)timerFired {
+    // If we can't acquire the lock this means that the `fireAndPause`
+    // method is running
+    if(OSSpinLockTry(&_callLock)) {
+        [self callSelectorOnTarget];
 
-    // Dispatch block should not retain the timer instance
-    __weak IMUTLibTimer *weakSelf = self;
-    dispatch_source_set_event_handler(self.timer, ^{
-        [weakSelf timerFired];
-    });
+        if (!_repeats) {
+            [self invalidate];
+        }
 
-    dispatch_resume(self.timer);
-}
-
-- (void)fire {
-    [self timerFired];
-}
-
-- (void)invalidate {
-    if (!OSAtomicTestAndSetBarrier(7, &_timerFlags.timerIsInvalidated)) {
-        dispatch_source_t timer = self.timer;
-        dispatch_async(self.privateSerialQueue, ^{
-            dispatch_source_cancel(timer);
-        });
+        OSSpinLockUnlock(&_callLock);
     }
 }
 
-#pragma mark Private
-
-- (void)timerFired {
-    if (OSAtomicAnd32OrigBarrier(1, &_timerFlags.timerIsInvalidated)) {
+- (void)callSelectorOnTarget {
+    if (TEST_INVALID) {
         return;
     }
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-    [self.target performSelector:self.selector withObject:self];
+    [_target performSelector:_selector withObject:self];
 #pragma clang diagnostic pop
-
-    if (!self.repeats) {
-        [self invalidate];
-    }
 }
 
 @end
 
-IMUTLibTimer *repeatingTimer(NSTimeInterval timeInterval, id target, SEL selector, dispatch_queue_t dispatchQueue) {
-    return [[IMUTLibTimer alloc] initWithTimeInterval:timeInterval
-                                               target:target
-                                             selector:selector
-                                             userInfo:nil
-                                              repeats:YES
-                                        dispatchQueue:dispatchQueue];
+IMUTLibTimer *repeatingTimer(NSTimeInterval timeInterval, id target, SEL selector, dispatch_queue_t dispatchQueue, BOOL schedule) {
+    IMUTLibTimer *timer = [[IMUTLibTimer alloc] initWithTimeInterval:timeInterval
+                                                              target:target
+                                                            selector:selector
+                                                             repeats:YES
+                                                       dispatchQueue:dispatchQueue];
+
+    if (schedule) {
+        [timer schedule];
+    }
+
+    return timer;
 }

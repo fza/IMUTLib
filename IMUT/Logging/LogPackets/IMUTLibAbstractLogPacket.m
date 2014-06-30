@@ -1,6 +1,7 @@
 #import "IMUTLibAbstractLogPacket.h"
 #import "IMUTLibConstants.h"
 #import "Macros.h"
+#import "IMUTLibMain+Internal.h"
 
 static NSString *kParamType = @"type";
 static NSString *kParamSessionId = @"sid";
@@ -20,20 +21,17 @@ static NSString *kParamSequenceNumber = @"seq";
     MethodNotImplementedException(@"logPacketType");
 }
 
-- (NSDictionary *)dictionaryWithSessionId:(NSString *)sessionId packetSequenceNumber:(unsigned long)sequenceNumber {
-    NSMutableDictionary *dictionary = [self baseDictionaryWithSessionId:sessionId sequenceNumber:sequenceNumber];
+- (NSDictionary *)dictionaryWithSequence:(unsigned long)sequence {
+    NSMutableDictionary *dictionary = $MD(@{
+        kParamType : [self stringFromLogPacketType:[self logPacketType]],
+        kParamSessionId : [IMUTLibMain imut].session.sessionId,
+        kParamSequenceNumber : @(sequence)
+    });
+
     [dictionary addEntriesFromDictionary:[self parameters]];
     [dictionary addEntriesFromDictionary:_additionalParameters];
 
     return dictionary;
-}
-
-- (NSMutableDictionary *)baseDictionaryWithSessionId:(NSString *)sessionId sequenceNumber:(unsigned long)sequenceNumber {
-    return $MD(@{
-        kParamType : [self stringFromLogPacketType:[self logPacketType]],
-        kParamSessionId : sessionId,
-        kParamSequenceNumber : @(sequenceNumber)
-    });
 }
 
 - (NSDictionary *)parameters {
@@ -55,8 +53,8 @@ static NSString *kParamSequenceNumber = @"seq";
         case IMUTLibLogPacketTypeEvents:
             return kIMUTLibLogPacketTypeEvents;
 
-        case IMUTLibLogPacketTypeFinalize:
-            return kIMUTLibLogPacketTypeFinalize;
+        case IMUTLibLogPacketTypeFinal:
+            return kIMUTLibLogPacketTypeFinal;
 
         default:
             // Never return nil

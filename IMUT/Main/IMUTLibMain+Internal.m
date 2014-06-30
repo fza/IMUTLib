@@ -1,12 +1,18 @@
 #import <UIKit/UIKit.h>
+#import <libkern/OSAtomic.h>
 #import "IMUTLibMain+Internal.h"
 #import "IMUTLibConstants.h"
 #import "IMUTLibFileManager.h"
 #import "IMUTLibSourceEventQueue.h"
 #import "IMUTLibUtil.h"
 #import "IMUTLibEventAggregatorRegistry.h"
+#import "IMUTLibFunctions.h"
 
 static BOOL paused;
+static BOOL started;
+static OSSpinLock notificationLock;
+static OSSpinLock sessionLock;
+static dispatch_queue_t mainDispatchQueue;
 
 @interface IMUTLibMain (InternalPrivate)
 
@@ -14,15 +20,11 @@ static BOOL paused;
 
 - (void)observeNotifications;
 
-- (void)applicationWillResignActiveNotification:(NSNotification *)notification;
+- (void)applicationWillResignActive:(NSNotification *)notification;
 
-- (void)applicationDidBecomeActiveNotification:(NSNotification *)notification;
+- (void)applicationDidBecomeActive:(NSNotification *)notification;
 
-- (void)applicationWillTerminateNotification:(NSNotification *)notification;
-
-- (void)postNotificationWithName:(NSString *)notificationName;
-
-- (void)postNotification:(NSNotification *)notification;
+- (void)applicationWillTerminate:(NSNotification *)notification;
 
 - (void)createNewSession;
 
@@ -34,6 +36,12 @@ static BOOL paused;
 
 @implementation IMUTLibMain (InternalPrivate)
 
++ (void)load {
+    notificationLock = OS_SPINLOCK_INIT;
+    sessionLock = OS_SPINLOCK_INIT;
+    mainDispatchQueue = mainImutDispatchQueue(DISPATCH_QUEUE_PRIORITY_HIGH);
+}
+
 - (void)enableModules {
     [[IMUTLibModuleRegistry sharedInstance] enableModulesWithConfigs:[self.config moduleConfigs]];
 }
@@ -42,92 +50,120 @@ static BOOL paused;
     NSNotificationCenter *defaultCenter = [NSNotificationCenter defaultCenter];
 
     [defaultCenter addObserver:self
-                      selector:@selector(applicationWillResignActiveNotification:)
+                      selector:@selector(applicationWillResignActive:)
                           name:UIApplicationWillResignActiveNotification
                         object:nil];
 
     [defaultCenter addObserver:self
-                      selector:@selector(applicationDidBecomeActiveNotification:)
+                      selector:@selector(applicationDidBecomeActive:)
                           name:UIApplicationDidBecomeActiveNotification
                         object:nil];
 
     [defaultCenter addObserver:self
-                      selector:@selector(applicationWillTerminateNotification:)
+                      selector:@selector(applicationWillTerminate:)
                           name:UIApplicationWillTerminateNotification
                         object:nil];
 }
 
-- (void)applicationWillResignActiveNotification:(NSNotification *)notification {
-    @synchronized (self) {
-        if (paused || [self isTerminated]) {
-            return;
-        }
+- (void)applicationWillResignActive:(NSNotification *)notification {
+    OSSpinLockLock(&notificationLock);
 
-        paused = YES;
+    if (!paused && ![self isTerminated]) {
+        dispatch_async(mainDispatchQueue, ^{
+            paused = YES;
 
-        [self postNotificationWithName:IMUTLibWillPauseNotification];
+            [IMUTLibUtil postNotificationName:IMUTLibWillPauseNotification
+                                       object:self
+                                 onMainThread:NO
+                                waitUntilDone:YES];
+
+            [self invalidateCurrentSession];
+
+            OSSpinLockUnlock(&notificationLock);
+        });
+    } else {
+        OSSpinLockUnlock(&notificationLock);
+    }
+}
+
+- (void)applicationDidBecomeActive:(NSNotification *)notification {
+    OSSpinLockLock(&notificationLock);
+
+    if (paused && ![self isTerminated]) {
+        dispatch_async(mainDispatchQueue, ^{
+            paused = NO;
+
+            [[IMUTLibEventSynchronizer sharedInstance] clearCache];
+
+            [self createNewSession];
+
+            [IMUTLibUtil postNotificationName:IMUTLibDidResumeNotification
+                                       object:self
+                                 onMainThread:NO
+                                waitUntilDone:YES];
+
+            OSSpinLockUnlock(&notificationLock);
+        });
+    } else {
+        OSSpinLockUnlock(&notificationLock);
+    }
+}
+
+- (void)applicationWillTerminate:(NSNotification *)notification {
+    OSSpinLockLock(&notificationLock);
+
+    dispatch_async(mainDispatchQueue, ^{
+        objc_setAssociatedObject(self, @selector(isTerminated), numYES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
+        [IMUTLibUtil postNotificationName:IMUTLibWillTerminateNotification
+                                   object:self
+                             onMainThread:NO
+                            waitUntilDone:YES];
+
         [self invalidateCurrentSession];
-    }
-}
 
-- (void)applicationDidBecomeActiveNotification:(NSNotification *)notification {
-    @synchronized (self) {
-        if (!paused || [self isTerminated]) {
-            return;
-        }
-
-        paused = NO;
-
-        [self createNewSession];
-        [self postNotificationWithName:IMUTLibDidResumeNotification];
-    }
-}
-
-- (void)applicationWillTerminateNotification:(NSNotification *)notification {
-    @synchronized (self) {
-        objc_setAssociatedObject(self, @selector(isTerminated), cYES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-
-        [self postNotificationWithName:IMUTLibWillTerminateNotification];
-        [self invalidateCurrentSession];
-    }
-}
-
-- (void)postNotificationWithName:(NSString *)notificationName {
-    [self postNotification:[NSNotification notificationWithName:notificationName
-                                                         object:self]];
-}
-
-- (void)postNotification:(NSNotification *)notification {
-    [IMUTLibUtil postNotificationOnMainThreadWithNotificationName:notification.name
-                                                           object:notification.object
-                                                    waitUntilDone:YES];
+        // DO NOT RELEASE THE NOTIFICATION LOCK FOR SAFETY PURPOSES
+        // IT MUST NOT BE POSSIBLE TO RE-ENTER PROCESSING NOW!
+        //
+        // Note that it may be possible that some internal IMUT threads are still
+        // running, they will finish soon from now.
+    });
 }
 
 - (void)createNewSession {
-    @synchronized (self) {
-        if (self.session) {
-            [self invalidateCurrentSession];
-        }
+    [self invalidateCurrentSession];
 
-        // Create new session
-        IMUTLibSession *newSession = [IMUTLibSession sessionWithTimeSource:[IMUTLibModuleRegistry sharedInstance].bestTimeSource];
-        objc_setAssociatedObject(self, @selector(session), newSession, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    // Create new session
+    IMUTLibSession *newSession = [IMUTLibSession sessionWithTimeSource:[IMUTLibModuleRegistry sharedInstance].bestTimeSource];
 
-        // Post global notification
-        [self postNotification:[NSNotification notificationWithName:IMUTLibDidSessionCreateNotification
-                                                             object:self.session]];
-    }
+    IMUTLogMain(@"Session ID: %@", newSession.sessionId);
+
+    // Replace session reference
+    OSSpinLockLock(&sessionLock);
+    objc_setAssociatedObject(self, @selector(session), newSession, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    OSSpinLockUnlock(&sessionLock);
+
+    // Post global notification
+    [IMUTLibUtil postNotificationName:IMUTLibDidCreateSessionNotification
+                               object:self
+                         onMainThread:NO
+                        waitUntilDone:YES];
 }
 
 - (void)invalidateCurrentSession {
-    @synchronized (self) {
-        if (self.session) {
-            // Set invalid flag for all those objects which retained the session object
-            [self.session invalidate];
+    if (self.session) {
+        // Set invalid flag. All those objects which retained the session object
+        // It is the responsibility of all those objects which retained the session
+        // object to check for invalidity.
+        [self.session invalidate];
 
-            // Set the session object to nil
-            objc_setAssociatedObject(self, @selector(session), nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        }
+        IMUTLogMain(@"Recorded %.2f seconds", self.session.sessionDuration);
+
+        // Post global notification
+        [IMUTLibUtil postNotificationName:IMUTLibDidInvalidateSessionNotification
+                                   object:self
+                             onMainThread:NO
+                            waitUntilDone:YES];
     }
 }
 
@@ -147,7 +183,7 @@ static BOOL paused;
         objc_setAssociatedObject(self, @selector(config), config, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
 
-    return self.config != nil;
+    return config != nil;
 }
 
 - (IMUTLibConfig *)config {
@@ -155,7 +191,13 @@ static BOOL paused;
 }
 
 - (IMUTLibSession *)session {
-    return objc_getAssociatedObject(self, @selector(session));
+    id session;
+
+    OSSpinLockLock(&sessionLock);
+    session = objc_getAssociatedObject(self, @selector(session));
+    OSSpinLockUnlock(&sessionLock);
+
+    return session;
 }
 
 - (BOOL)isTerminated {
@@ -163,22 +205,32 @@ static BOOL paused;
 }
 
 - (void)doStart {
-    // Invoke start procedure in a dedicated thread
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        @synchronized (self) {
-            paused = NO;
+    // Aquire lock during startup
+    NSAssert(OSSpinLockTry(&notificationLock), @"Unable to aquire startup lock.");
 
+    // Initial state
+    started = NO;
+    paused = NO;
+
+    // Listen for runtime notifications as early as possible
+    [self observeNotifications];
+
+    static dispatch_once_t startOnceToken;
+    dispatch_once(&startOnceToken, ^{
+        // Invoke start procedure in a dedicated thread
+        dispatch_async(mainImutDispatchQueue(DISPATCH_QUEUE_PRIORITY_LOW), ^{
             // Make sure all core objects did initialize
             [IMUTLibSourceEventQueue sharedInstance];
             [IMUTLibEventAggregatorRegistry sharedInstance];
             [IMUTLibModuleRegistry sharedInstance];
 
             // Set the sync time interval
-            [IMUTLibEventSynchronizer sharedInstance].syncTimeInterval = [[self.config valueForConfigKey:kIMUTLibConfigSynchronizationTimeInterval
-                                                                                                 default:@0.25] doubleValue];
+            NSTimeInterval syncTimeInterval = [[self.config valueForConfigKey:kIMUTLibConfigSynchronizationTimeInterval
+                                                                      default:@0.25] doubleValue];
+            [IMUTLibEventSynchronizer sharedInstance].syncTimeInterval = syncTimeInterval;
 
             // Remove old, unfinished files
-            if (![[self.config valueForConfigKey:kIMUTLibConfigKeepUnfinishedFiles default:cNO] boolValue]) {
+            if (![[self.config valueForConfigKey:kIMUTLibConfigKeepUnfinishedFiles default:numNO] boolValue]) {
                 [IMUTLibFileManager removeTemporaryFiles];
             }
 
@@ -190,15 +242,21 @@ static BOOL paused;
             // Enable modules
             [self enableModules];
 
-            // Listen for runtime notifications
-            [self observeNotifications];
-
             // Create the first session
             [self createNewSession];
 
-            // Tell all listeners that the main initialization is ready
-            [self postNotificationWithName:IMUTLibWillStartNotification];
-        }
+            // Tell all modules to start
+            [IMUTLibUtil postNotificationName:IMUTLibWillStartNotification
+                                       object:self
+                                 onMainThread:NO
+                                waitUntilDone:YES];
+
+            // We are ready
+            started = YES;
+
+            // Release the lock
+            OSSpinLockUnlock(&notificationLock);
+        });
     });
 }
 

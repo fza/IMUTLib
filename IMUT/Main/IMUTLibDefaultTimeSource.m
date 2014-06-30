@@ -1,51 +1,14 @@
+#import <libkern/OSAtomic.h>
 #import "IMUTLibDefaultTimeSource.h"
 #import "IMUTLibConstants.h"
-#import "IMUTLibUtil.h"
 #import "IMUTLibFunctions.h"
 
 NSUInteger IMUTLibDefaultTimeSourcePreference = 0;
 
-@interface IMUTLibDefaultTimeSource ()
-
-- (void)didReceiveStartResumeNotification:(NSNotification *)notification;
-
-- (void)didReceivePauseTerminateNotification:(NSNotification *)notification;
-
-@end
-
 @implementation IMUTLibDefaultTimeSource {
     NSDate *_startDate;
     double _referenceTime;
-}
-
-- (instancetype)init {
-    if (self = [super init]) {
-        // Reset the start date on start and resume notifications
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(didReceiveStartResumeNotification:)
-                                                     name:IMUTLibWillStartNotification
-                                                   object:nil];
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(didReceiveStartResumeNotification:)
-                                                     name:IMUTLibWillPauseNotification
-                                                   object:nil];
-
-        // Running is NO when we receive pause and terminate notifications
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(didReceivePauseTerminateNotification:)
-                                                     name:IMUTLibDidResumeNotification
-                                                   object:nil];
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(didReceivePauseTerminateNotification:)
-                                                     name:IMUTLibWillTerminateNotification
-                                                   object:nil];
-    }
-
-    return self;
-}
-
-- (void)dealloc {
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    OSSpinLock _lock;
 }
 
 #pragma mark IMUTLibTimeSource protocol
@@ -55,41 +18,50 @@ NSUInteger IMUTLibDefaultTimeSourcePreference = 0;
 }
 
 - (NSString *)timeSourceInfo {
-    return @"default";
+    return kDefault;
 }
 
 - (NSDate *)startDate {
-    @synchronized (self) {
-        return _startDate;
-    }
+    NSDate *startDate;
+
+    OSSpinLockLock(&_lock);
+    startDate = _startDate;
+    OSSpinLockUnlock(&_lock);
+
+    return startDate;
 }
 
 - (NSTimeInterval)intervalSinceClockStart {
-    if (_startDate) {
-        return uptime() - _referenceTime;
-    }
+    NSTimeInterval referenceTime = 0;
 
-    return 0;
+    OSSpinLockLock(&_lock);
+    if(_startDate) {
+        referenceTime = uptime() - _referenceTime;
+    }
+    OSSpinLockUnlock(&_lock);
+
+    return referenceTime;
 }
 
-#pragma mark Private
+- (BOOL)startTicking {
+    OSSpinLockLock(&_lock);
+    _startDate = [NSDate date];
+    _referenceTime = uptime();
 
-- (void)didReceiveStartResumeNotification:(NSNotification *)notification {
-    @synchronized (self) {
-        _startDate = [NSDate date];
-        _referenceTime = uptime();
-        [self.timeSourceDelegate clockDidStartAtDate:_startDate];
-    }
+    [self.timeSourceDelegate clockDidStartAtDate:_startDate];
+    OSSpinLockUnlock(&_lock);
+
+    return YES;
 }
 
-- (void)didReceivePauseTerminateNotification:(NSNotification *)notification {
-    @synchronized (self) {
-        if (_startDate) {
-            _startDate = nil;
-            [self.timeSourceDelegate clockDidStopAfterTimeInterval:[self intervalSinceClockStart]];
-            _referenceTime = 0;
-        }
-    }
+- (void)stopTicking {
+    OSSpinLockLock(&_lock);
+    _startDate = nil;
+
+    [self.timeSourceDelegate clockDidStopAfterTimeInterval:[self intervalSinceClockStart]];
+
+    _referenceTime = 0;
+    OSSpinLockUnlock(&_lock);
 }
 
 @end

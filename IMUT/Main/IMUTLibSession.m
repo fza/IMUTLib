@@ -6,24 +6,37 @@
 
 @interface IMUTLibSession ()
 
-@property(nonatomic, readwrite, retain) NSString *sessionId;
-@property(nonatomic, readwrite, weak) id <IMUTLibTimeSource> timeSource;
-@property(nonatomic, readwrite, retain) NSNumber *sortingNumber;
+@property(atomic, readwrite, retain) NSDate *cachedStartDate;
+@property(atomic, readwrite, assign) NSTimeInterval cachedDuration;
 
 - (instancetype)initWithTimeSource:(id <IMUTLibTimeSource>)timeSource;
 
 @end
 
-@implementation IMUTLibSession
-
-@synthesize invalid = _invalid;
-
-- (BOOL)timeSourceRunning {
-    return [self.timeSource startDate] != nil;
+@implementation IMUTLibSession {
+    NSTimeInterval _cachedDuration;
+    NSDate *_cachedStartDate;
 }
+
+@dynamic sessionDuration;
+@dynamic startDate;
+
+DESIGNATED_INIT
 
 + (instancetype)sessionWithTimeSource:(id <IMUTLibTimeSource>)timeSource {
     return [[self alloc] initWithTimeSource:timeSource];
+}
+
+- (NSTimeInterval)sessionDuration {
+    if (self.cachedDuration) {
+        return self.cachedDuration;
+    }
+
+    return _timeSource.intervalSinceClockStart;
+}
+
+- (NSDate *)startDate {
+    return self.cachedStartDate;
 }
 
 - (void)invalidate {
@@ -33,45 +46,44 @@
 #pragma mark IMUTLibTimeSourceDelegate
 
 - (void)clockDidStartAtDate:(NSDate *)startDate {
-    [IMUTLibUtil postNotificationOnMainThreadWithNotificationName:IMUTLibClockDidStartNotification
-                                                           object:self
-                                                         userInfo:@{
-                                                             kSessionId : self.sessionId,
-                                                             kTimeSource : self.timeSource,
-                                                             kStartDate : [startDate copy]
-                                                         }
-                                                    waitUntilDone:YES];
+    self.cachedStartDate = [startDate copy];
+
+    [IMUTLibUtil postNotificationName:IMUTLibClockDidStartNotification
+                               object:self
+                             userInfo:@{
+                                 kSessionId : self.sessionId,
+                                 kTimeSource : self.timeSource,
+                                 kStartDate : _cachedStartDate
+                             }
+                         onMainThread:NO
+                        waitUntilDone:YES];
 }
 
 - (void)clockDidStopAfterTimeInterval:(NSTimeInterval)timeInterval {
-    [IMUTLibUtil postNotificationOnMainThreadWithNotificationName:IMUTLibClockDidStopNotification
-                                                           object:self
-                                                         userInfo:@{
-                                                             kSessionId : self.sessionId,
-                                                             kTimeSource : self.timeSource,
-                                                             kSessionDuration : @(timeInterval)
-                                                         }
-                                                    waitUntilDone:YES];
+    self.cachedDuration = timeInterval;
+
+    [IMUTLibUtil postNotificationName:IMUTLibClockDidStopNotification
+                               object:self
+                             userInfo:@{
+                                 kSessionId : self.sessionId,
+                                 kTimeSource : self.timeSource,
+                                 kSessionDuration : @(timeInterval)
+                             }
+                         onMainThread:NO
+                        waitUntilDone:YES];
 }
 
 #pragma mark Private
 
 - (instancetype)initWithTimeSource:(id <IMUTLibTimeSource>)timeSource {
     if (self = [super init]) {
-        self.sessionId = randomString(10);
-        self.timeSource = timeSource;
-        self.timeSource.timeSourceDelegate = self;
-        self.sortingNumber = [[IMUTLibMetaData sharedInstance] numberAndIncr:kIMUTNextSortingNumber
-                                                                     default:@0
-                                                                    isDouble:NO];
-
-        if ([(NSObject *) timeSource respondsToSelector:@selector(denoteAsPrimaryTimeSource)]) {
-            [timeSource denoteAsPrimaryTimeSource];
-        }
-
         _invalid = NO;
-
-        IMUTLogMain(@"Session ID: %@", self.sessionId);
+        _sessionId = randomString(10);
+        _timeSource = timeSource;
+        _timeSource.timeSourceDelegate = self;
+        _sortingNumber = [[IMUTLibMetaData sharedInstance] numberAndIncr:kIMUTNextSortingNumber
+                                                                 default:@0
+                                                                isDouble:NO];
     }
 
     return self;

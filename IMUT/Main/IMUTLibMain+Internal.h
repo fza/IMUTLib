@@ -7,7 +7,7 @@
 
 @interface IMUTLibMain (Internal)
 
-// The current session
+// The current session. It is ensured that this is never nil.
 @property(nonatomic, readonly, retain) IMUTLibSession *session;
 
 // The configuration

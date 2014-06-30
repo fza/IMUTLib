@@ -8,13 +8,19 @@
 // guarantee that another application thread may change the proposed UI representation
 // while the main thread is locked. These changes are incorporated into the visible
 // application state when we release the lock.
-+ (void)postNotificationOnMainThreadWithNotificationName:(NSString *)name
-                                                  object:(id)object
-                                                userInfo:(NSDictionary *)userInfo
-                                           waitUntilDone:(BOOL)waitUntilDone;
++ (void)postNotification:(NSNotification *)notification
+            onMainThread:(BOOL)onMainThread
+           waitUntilDone:(BOOL)waitUntilDone;
 
-+ (void)postNotificationOnMainThreadWithNotificationName:(NSString *)name
-                                                  object:(id)object
-                                           waitUntilDone:(BOOL)waitUntilDone;
++ (void)postNotificationName:(NSString *)name
+                      object:(id)object
+                    userInfo:(NSDictionary *)userInfo
+                onMainThread:(BOOL)onMainThread
+               waitUntilDone:(BOOL)waitUntilDone;
+
++ (void)postNotificationName:(NSString *)name
+                      object:(id)object
+                onMainThread:(BOOL)onMainThread
+               waitUntilDone:(BOOL)waitUntilDone;
 
 @end

@@ -13,10 +13,12 @@ NSString *const IMUTLibWillPauseNotification = BUNDLE_IDENTIFIER_CONCAT("will-pa
 NSString *const IMUTLibDidResumeNotification = BUNDLE_IDENTIFIER_CONCAT("did-resume");
 NSString *const IMUTLibWillTerminateNotification = BUNDLE_IDENTIFIER_CONCAT("will-terminate");
 NSString *const IMUTLibModuleRegistryDidFreezeNotification = BUNDLE_IDENTIFIER_CONCAT("registry.did-freeze");
-NSString *const IMUTLibDidSessionCreateNotification = BUNDLE_IDENTIFIER_CONCAT("session.did-create");
+NSString *const IMUTLibDidCreateSessionNotification = BUNDLE_IDENTIFIER_CONCAT("session.did-create");
+NSString *const IMUTLibDidInvalidateSessionNotification = BUNDLE_IDENTIFIER_CONCAT("session.invalidated");
 NSString *const IMUTLibClockDidStartNotification = BUNDLE_IDENTIFIER_CONCAT("timesource.did-start");
 NSString *const IMUTLibClockDidStopNotification = BUNDLE_IDENTIFIER_CONCAT("timesource.will-stop");
 NSString *const IMUTLibEventSynchronizerDidStartNotification = BUNDLE_IDENTIFIER_CONCAT("synchronizer.did-start");
+NSString *const IMUTLibEventSynchronizerWillStopNotification = BUNDLE_IDENTIFIER_CONCAT("synchronizer.will-stop");
 
 
 // Configuration keys
@@ -38,11 +40,12 @@ NSString *const kIMUTLibDeltaEntityTypeUnknown = @"unknown";
 NSString *const kIMUTLibLogPacketTypeSessionInit = @"session-init";
 NSString *const kIMUTLibLogPacketTypeSync = @"sync";
 NSString *const kIMUTLibLogPacketTypeEvents = @"events";
-NSString *const kIMUTLibLogPacketTypeFinalize = @"finalize";
+NSString *const kIMUTLibLogPacketTypeFinal = @"final";
 
 
 // Misc constants
-NSString* const kkUnknown = @"unknown";
+NSString* const kDefault = @"default";
+NSString *const kUnknown = @"unknown";
 NSString *const kSessionId = @"sessionId";
 NSString *const kTimeSource = @"timeSource";
 NSString *const kStartDate = @"startDate";
@@ -56,6 +59,6 @@ NSString *const IMUTMetaFileBasename = @"imut--meta";
 
 // Initializers for special constants (non-compile-time constants)
 CONSTRUCTOR {
-    cNO = [NSNumber numberWithBool:NO];
-    cYES = [NSNumber numberWithBool:YES];
+    numNO = [NSNumber numberWithBool:NO];
+    numYES = [NSNumber numberWithBool:YES];
 }
