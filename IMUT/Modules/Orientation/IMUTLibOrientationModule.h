@@ -1,7 +1,7 @@
 #import <Foundation/Foundation.h>
-#import "IMUTLibEventAggregator.h"
-#import "IMUTLibAbstractModule.h"
 
-@interface IMUTLibOrientationModule : IMUTLibAbstractModule <IMUTLibEventAggregator>
+#import "IMUTLibModule.h"
+
+@interface IMUTLibOrientationModule : IMUTLibModule
 
 @end

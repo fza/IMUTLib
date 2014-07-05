@@ -1,11 +1,8 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
-#import "IMUTLibAbstractModule.h"
-#import "IMUTLibEventAggregator.h"
-#import "IMUTLibUIViewControllerChangeEvent.h"
 
-@interface IMUTLibUIViewControllerModule : IMUTLibAbstractModule <IMUTLibEventAggregator>
+#import "IMUTLibModule.h"
 
-- (IMUTLibUIViewControllerChangeEvent *)sourceEventWithViewController:(UIViewController *)viewController;
+@interface IMUTLibUIViewControllerModule : IMUTLibModule
 
 @end

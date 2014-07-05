@@ -1,9 +1,8 @@
 #import <UIKit/UIKit.h>
+
 #import "IMUTLibBacklightModule.h"
 #import "IMUTLibBacklightChangeEvent.h"
 #import "IMUTLibBacklightModuleConstants.h"
-#import "IMUTLibSourceEventQueue.h"
-#import "IMUTLibMain.h"
 
 @interface IMUTLibBacklightModule ()
 
@@ -15,7 +14,7 @@
 
 @implementation IMUTLibBacklightModule
 
-#pragma mark IMUTLibModule protocol
+#pragma mark IMUTLibModule class
 
 + (NSString *)moduleName {
     return kIMUTLibBacklightModule;
@@ -27,48 +26,44 @@
     };
 }
 
-- (NSSet *)eventsWithCurrentState {
+- (NSSet *)eventsWithInitialState {
     return $(
         [self eventWithCurrentBrightness]
     );
 }
 
-- (void)start {
+- (void)startWithSession:(IMUTLibSession *)session {
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(brightnessDidChange)
                                                  name:UIScreenBrightnessDidChangeNotification
                                                object:nil];
 }
 
-- (void)pause {
+- (void)stopWithSession:(IMUTLibSession *)session {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
-- (void)resume {
-    [self start];
-}
-
-- (void)terminate {
-    [self pause];
-}
-
-#pragma mark IMUTLibModuleEventedProducer protocol
-
 - (void)registerEventAggregatorBlocksInRegistry:(IMUTLibEventAggregatorRegistry *)registry {
-    IMUTLibEventAggregatorBlock aggregator = ^IMUTLibAggregatorOPReturn(IMUTLibBacklightChangeEvent *sourceEvent, IMUTLibBacklightChangeEvent *lastPersistedSourceEvent, IMUTLibDeltaEntity **deltaEntity) {
-        CGFloat newBrightness = [sourceEvent brightness];
-        CGFloat oldBrightness = [lastPersistedSourceEvent brightness];
-        CGFloat deltaBrightness = newBrightness - oldBrightness;
-
-        if (fabs(deltaBrightness) >= [_config[kIMUTLibBacklightModuleConfigMinDeltaValue] doubleValue]) {
-            NSDictionary *deltaParams = @{
-                kIMUTLibBacklightChangeEventParamVal : [NSNumber numberWithDouble:round(deltaBrightness * 100.0) / 100.0]
-            };
-
-            *deltaEntity = [IMUTLibDeltaEntity deltaEntityWithParameters:deltaParams
-                                                             sourceEvent:sourceEvent];
+    IMUTLibEventAggregatorBlock aggregator = ^IMUTLibAggregatorOperation(IMUTLibBacklightChangeEvent *sourceEvent, IMUTLibBacklightChangeEvent *lastPersistedSourceEvent, IMUTLibPersistableEntity **deltaEntity) {
+        if (!lastPersistedSourceEvent) {
+            *deltaEntity = [IMUTLibPersistableEntity entityWithSourceEvent:sourceEvent];
+            (*deltaEntity).entityType = IMUTLibPersistableEntityTypeAbsolute;
 
             return IMUTLibAggregationOperationEnqueue;
+        } else {
+            CGFloat newBrightness = [sourceEvent brightness];
+            CGFloat oldBrightness = [lastPersistedSourceEvent brightness];
+            CGFloat deltaBrightness = newBrightness - oldBrightness;
+
+            if (fabs(deltaBrightness) >= [_config[kIMUTLibBacklightModuleConfigMinDeltaValue] doubleValue]) {
+                NSDictionary *deltaParams = @{
+                    kIMUTLibBacklightChangeEventParamVal : [NSNumber numberWithDouble:round(deltaBrightness * 100.0) / 100.0]
+                };
+
+                *deltaEntity = [IMUTLibPersistableEntity entityWithParameters:deltaParams sourceEvent:sourceEvent];
+
+                return IMUTLibAggregationOperationEnqueue;
+            }
         }
 
         return IMUTLibAggregationOperationDequeue;
@@ -80,7 +75,7 @@
 #pragma mark Private
 
 - (void)brightnessDidChange {
-    [[IMUTLibSourceEventQueue sharedInstance] enqueueSourceEvent:[self eventWithCurrentBrightness]];
+    [[IMUTLibSourceEventCollection sharedInstance] addSourceEvent:[self eventWithCurrentBrightness]];
 }
 
 - (IMUTLibBacklightChangeEvent *)eventWithCurrentBrightness {

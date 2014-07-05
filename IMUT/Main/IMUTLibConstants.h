@@ -11,6 +11,7 @@ NSString *const IMUTLibWillStartNotification;
 NSString *const IMUTLibWillPauseNotification;
 NSString *const IMUTLibDidResumeNotification;
 NSString *const IMUTLibWillTerminateNotification;
+NSString *const IMUTLibModuleRegistryWillFreezeNotification;
 NSString *const IMUTLibModuleRegistryDidFreezeNotification;
 NSString *const IMUTLibDidCreateSessionNotification;
 NSString *const IMUTLibDidInvalidateSessionNotification;
@@ -27,12 +28,12 @@ NSString *const kIMUTLibConfigSynchronizationTimeInterval;
 
 
 // Delta entity type keys
-NSString *const kIMUTLibDeltaEntityTypeAbsolute;
-NSString *const kIMUTLibDeltaEntityTypeDelta;
-NSString *const kIMUTLibDeltaEntityTypeStatus;
-NSString *const kIMUTLibDeltaEntityTypeMixed;
-NSString *const kIMUTLibDeltaEntityTypeOther;
-NSString *const kIMUTLibDeltaEntityTypeUnknown;
+NSString *const kIMUTLibPersistableEntityTypeAbsolute;
+NSString *const kIMUTLibPersistableEntityTypeDelta;
+NSString *const kIMUTLibPersistableEntityTypeStatus;
+NSString *const kIMUTLibPersistableEntityTypeMixed;
+NSString *const kIMUTLibPersistableEntityTypeOther;
+NSString *const kIMUTLibPersistableEntityTypeUnknown;
 
 
 // Log packet type keys
@@ -43,17 +44,18 @@ NSString *const kIMUTLibLogPacketTypeFinal;
 
 
 // Misc constants
-NSString* const kDefault;
-NSString* const kUnknown;
-NSString *const kSessionId;
-NSString *const kTimeSource;
-NSString *const kStartDate;
-NSString *const kSessionDuration;
-NSString *const kIMUTLibInitialEventsPacket;
-NSString *const kIMUTNextSortingNumber;
-NSString *const IMUTLibDefaultPlistFilename;
-NSString *const IMUTLibTempFileExtension;
-NSString *const IMUTMetaFileBasename;
+NSString *const kDefault;
+NSString *const kUnknown;
+NSString *const kParamAbsoluteDateTime;
+NSString *const kParamTimebaseInfo;
+NSString *const kEntityMarking;
+NSString *const kEntityMarkInitial;
+NSString *const kEntityMarkFinal;
+NSString *const kDefaultSessionTimer;
+NSString *const kNextSortingNumber;
+NSString *const kDefaultPlistFilename;
+NSString *const kTempFileExtension;
+NSString *const kMetaFileBasename;
 
 
 // Special constants

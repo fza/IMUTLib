@@ -38,7 +38,7 @@ static NSCache *sequenceNumberCache;
                                         attributes:nil
                                              error:&error];
 
-                NSAssert(!error, @"unable to create IMUT directory");
+                NSAssert(!error, @"Unable to create IMUT directory.");
             }
         }
 
@@ -51,7 +51,7 @@ static NSCache *sequenceNumberCache;
 + (NSString *)absoluteFilePathWithBasename:(NSString *)basename extension:(NSString *)extension ensureUniqueness:(BOOL)ensureUniqueness isTemporary:(BOOL)isTemporary {
     IMUTLibSession *session = [IMUTLibMain imut].session;
 
-    NSAssert(session != nil, @"unable to generate a unique filename as there is no current IMUT session");
+    NSAssert(session && !session.invalid, @"Unable to generate a unique filename as there is no valid IMUT session.");
 
     NSString *imutPath = [self absoluteImutDirectoryPath];
     if (!imutPath) {
@@ -65,7 +65,7 @@ static NSCache *sequenceNumberCache;
     NSString *filename = [NSString stringWithFormat:@"%@.%@", firstNamePart, extension];
 
     if (isTemporary) {
-        extension = [extension stringByAppendingPathExtension:IMUTLibTempFileExtension];
+        extension = [extension stringByAppendingPathExtension:kTempFileExtension];
     }
 
     if (ensureUniqueness) {
@@ -149,7 +149,7 @@ static NSCache *sequenceNumberCache;
         NSFileManager *fileManager = [NSFileManager defaultManager];
         NSArray *filenames = [[fileManager enumeratorAtPath:imutPath] allObjects];
         [filenames enumerateObjectsUsingBlock:^(NSString *filename, NSUInteger idx, BOOL *stop) {
-            if ([[filename pathExtension] isEqualToString:IMUTLibTempFileExtension]) {
+            if ([[filename pathExtension] isEqualToString:kTempFileExtension]) {
                 NSError *error;
                 [fileManager removeItemAtPath:[imutPath stringByAppendingPathComponent:filename] error:&error];
             }
@@ -157,24 +157,27 @@ static NSCache *sequenceNumberCache;
     }
 }
 
-+ (void)renameTemporaryFileAtPath:(NSString *)path {
-    if (![[path pathExtension] isEqualToString:IMUTLibTempFileExtension]) {
-        return;
++ (NSString *)renameTemporaryFileAtPath:(NSString *)path {
+    if (![[path pathExtension] isEqualToString:kTempFileExtension]) {
+        return path;
     }
 
     if (![[path substringWithRange:NSMakeRange(0, 1)] isEqualToString:@"/"]) {
         path = [[self absoluteImutDirectoryPath] stringByAppendingPathComponent:path];
     }
 
+    NSError *error;
+    NSString *finalPath = [path stringByDeletingPathExtension];
     NSFileManager *fileManager = [NSFileManager defaultManager];
     if ([fileManager fileExistsAtPath:path]) {
-        NSError *error;
-        [fileManager moveItemAtPath:path toPath:[path stringByDeletingPathExtension] error:&error];
+        [fileManager moveItemAtPath:path toPath:finalPath error:&error];
     }
+
+    return error ? nil : finalPath;
 }
 
 // @see http://www.ios-developer.net/iphone-ipad-programmer/development/file-saving-and-loading/disk-information
-+ (NSNumber *)freeDiskSpaceInBytes {
++ (NSNumber *)freeDiskSpace {
     NSError *error;
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
     NSDictionary *dictionary = [[NSFileManager defaultManager] attributesOfFileSystemForPath:[paths lastObject]

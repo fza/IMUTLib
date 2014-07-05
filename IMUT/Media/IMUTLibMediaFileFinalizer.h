@@ -5,8 +5,6 @@
 
 + (instancetype)finalizerWithAssetWriter:(AVAssetWriter *)avAssetWriter;
 
-- (instancetype)initWithAssetWriter:(AVAssetWriter *)avAssetWriter;
-
-- (void)finalizeMediaFileWithCompletionHandler:(void (^)(void))handler;
+- (void)finalizeMediaFileWithCompletionBlock:(void (^)(NSString *absolutePathOfMediaFile))handler;
 
 @end

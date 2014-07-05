@@ -1,35 +1,59 @@
 #import "IMUTLibScreenModule.h"
-#import "IMUTLibUIWindowRecorder.h"
-#import "IMUTLibMediaStreamManager.h"
+#import "IMUTLibScreenRenderer.h"
 #import "IMUTLibScreenModuleConstants.h"
+#import "IMUTLibScreenModuleSessionTimer.h"
+#import "IMUTLibScreenRecorderStartEvent.h"
+#import "IMUTLibScreenRecorderStopEvent.h"
 #import "IMUTLibConstants.h"
-#import "IMUTLibMain.h"
+
+#define FINALIZATION_TIMEOUT_SECS 5.0
+
+@interface IMUTLibScreenModule () <IMUTLibMediaWriterDelegate, IMUTLibScreenRendererDelegate>
+
+- (BOOL)startRecording;
+
+- (void)stopRecording;
+@end
 
 @implementation IMUTLibScreenModule {
-    IMUTLibUIWindowRecorder *_recorder;
+    void(^_finalizationBlock)(void);
 }
 
-#pragma mark IMUTLibModule protocol
+- (instancetype)initWithConfig:(NSDictionary *)config {
+    if (self = [super initWithConfig:config]) {
+        IMUTLibScreenRenderer *screenRenderer = [IMUTLibScreenRenderer rendererWithConfig:_config];
+        screenRenderer.delegate = self;
+
+        _videoSource = [IMUTLibPollingVideoSource videoSourceWithRenderer:screenRenderer targetFrameRate:35];
+
+        _mediaWriter = [IMUTLibMediaWriter writerWithBasename:@"screen"];
+        _mediaWriter.delegate = self;
+        [_mediaWriter addMediaSource:self.videoSource];
+    }
+
+    return self;
+}
+
+- (BOOL)startRecording {
+    return [self.videoSource startCapturing];
+}
+
+- (void)stopRecording {
+    [self.videoSource stopCapturing];
+}
+
+#pragma mark IMUTLibModule class
 
 + (NSString *)moduleName {
     return kIMUTLibScreenModule;
 }
 
-+ (IMUTLibModuleType)moduleType {
-    return IMUTLibModuleTypeStream;
++ (Class <IMUTLibSessionTimer>)sessionTimerClass {
+    return [IMUTLibScreenModuleSessionTimer class];
 }
 
-- (instancetype)initWithConfig:(NSDictionary *)config {
-    if (self = [super initWithConfig:config]) {
-        IMUTLibMediaStreamWriter *mediaStreamWriter = [[IMUTLibMediaStreamManager sharedInstance] writerWithBasename:@"screen"];
-        _recorder = [IMUTLibUIWindowRecorder recorderWithMediaStreamWriter:mediaStreamWriter config:config];
-        [_recorder addObserver:self
-                    forKeyPath:@"recordingStartDate"
-                       options:NSKeyValueObservingOptionNew
-                       context:NULL];
-    }
-
-    return self;
++ (IMUTLibModuleType)moduleType {
+    return IMUTLibModuleTypeStream | IMUTLibModuleTypeEvented;
 }
 
 + (NSDictionary *)defaultConfig {
@@ -39,50 +63,81 @@
     };
 }
 
-- (void)pause {
-    [self stopTicking];
+- (IMUTLibPersistableEntityType)defaultEntityType {
+    return IMUTLibPersistableEntityTypeOther;
 }
 
-#pragma mark IMUTLibTimeSource protocol
-
-+ (NSNumber *)timeSourcePreference {
-    return @1024;
+// Only used if this module doesn't act as time source
+- (void)startWithSession:(IMUTLibSession *)session {
+    [self startRecording];
 }
 
-- (NSString *)timeSourceInfo {
-    return kIMUTLibScreenModule;
+// Only used if this module doesn't act as time source
+- (void)stopWithSession:(IMUTLibSession *)session {
+    [self stopRecording];
 }
 
-- (NSDate *)startDate {
-    return _recorder.recordingStartDate;
+- (void)registerEventAggregatorBlocksInRegistry:(IMUTLibEventAggregatorRegistry *)registry {
+    IMUTLibEventAggregatorBlock aggregator = ^IMUTLibAggregatorOperation(NSObject <IMUTLibSourceEvent> *sourceEvent, NSObject <IMUTLibSourceEvent> *lastPersistedSourceEvent, IMUTLibPersistableEntity **deltaEntity) {
+        *deltaEntity = [IMUTLibPersistableEntity entityWithSourceEvent:sourceEvent];
+        (*deltaEntity).entityType = IMUTLibPersistableEntityTypeOther;
+
+        return IMUTLibAggregationOperationEnqueue;
+    };
+
+    [registry registerEventAggregatorBlock:aggregator forEventsWithNames:$(
+        kIMUTLibScreenModuleRecorderStartEvent,
+        kIMUTLibScreenModuleRecorderStopEvent
+    )];
 }
 
-- (NSTimeInterval)intervalSinceClockStart {
-    if (_recorder.recordingStartDate) {
-        return _recorder.recordingDuration;
+- (NSSet *)eventsWithFinalState {
+    dispatch_group_t dispatchGroup = dispatch_group_create();
+    dispatch_group_enter(dispatchGroup);
+
+    _finalizationBlock = ^{
+        dispatch_group_leave(dispatchGroup);
+    };
+
+    dispatch_group_wait(dispatchGroup, dispatch_time(DISPATCH_TIME_NOW, (int64_t) (FINALIZATION_TIMEOUT_SECS * NSEC_PER_SEC)));
+
+    return nil;
+}
+
+#pragma mark IMUTLibMediaWriterDelegate protocol
+
+- (void)mediaWriter:(IMUTLibMediaWriter *)mediaWriter didStartWritingFileAtPath:(NSString *)path {
+    // Enqueue a source event to inform that the media writer started
+    id sourceEvent = [IMUTLibScreenRecorderStartEvent new];
+    [[IMUTLibSourceEventCollection sharedInstance] addSourceEvent:sourceEvent now:YES];
+}
+
+- (void)mediaWriter:(IMUTLibMediaWriter *)mediaWriter willFinalizeFileAtPath:(NSString *)path {
+    // Inform the recording delegate (= the time source)
+    if ([self.delegate respondsToSelector:@selector(recorder:willFinalizeCurrentMediaFileAtPath:)]) {
+        [self.delegate recorder:self willFinalizeCurrentMediaFileAtPath:path];
     }
-
-    return 0;
 }
 
-- (BOOL)startTicking {
-    return [_recorder startRecording];
+- (void)mediaWriter:(IMUTLibMediaWriter *)mediaWriter didFinalizeFileAtPath:(NSString *)path {
+    if (_finalizationBlock) {
+        id sourceEvent = [[IMUTLibScreenRecorderStopEvent alloc] initWithSampleTime:self.videoSource.lastSampleTime
+                                                                           filename:[path lastPathComponent]];
+        [[IMUTLibSourceEventCollection sharedInstance] addSourceEvent:sourceEvent now:YES];
+
+        dispatch_sync(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            _finalizationBlock();
+            _finalizationBlock = nil;
+        });
+    }
 }
 
-- (void)stopTicking {
-    [_recorder stopRecording];
-}
+#pragma mark IMUTLibScreenRendererDelegate protocol
 
-#pragma mark Private
-
-- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
-    if (object == _recorder && [keyPath isEqualToString:@"recordingStartDate"]) {
-        id value = change[NSKeyValueChangeNewKey];
-        if (value == nil || value == [NSNull null]) {
-            [self.timeSourceDelegate clockDidStopAfterTimeInterval:_recorder.lastRecordingDuration];
-        } else {
-            [self.timeSourceDelegate clockDidStartAtDate:change[@"new"]];
-        }
+- (void)renderer:(IMUTLibScreenRenderer *)renderer createdNewFrameAtTime:(NSTimeInterval)time {
+    // Inform the recording delegate (= the time source)
+    if ([self.delegate respondsToSelector:@selector(recorder:createdNewFrameAtTime:)]) {
+        [self.delegate recorder:self createdNewFrameAtTime:time];
     }
 }
 

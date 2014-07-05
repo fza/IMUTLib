@@ -2,6 +2,7 @@
 #import "NSObject+IMUTLibClassExtension.h"
 #import "Macros.h"
 
+
 void integrateClassMethod(Class targetClass, Class sourceClass, SEL targetSelector, SEL sourceSelector, SEL originalSelector, IMUTLibMethodIntegrationStatus *status);
 
 @implementation NSObject (IMUTLibClassExtension)
@@ -14,11 +15,11 @@ void integrateClassMethod(Class targetClass, Class sourceClass, SEL targetSelect
     integrateClassMethod(self, sourceClass, sourceSelector, NULL, NULL, status);
 }
 
-+ (void)__IMUT_integrateMethodFromSourceClass:(Class)sourceClass withSourceSelector:(SEL)sourceSelector byRenamingOriginalSelectorToSelector:(SEL)originalSelector status:(IMUTLibMethodIntegrationStatus *)status {
++ (void)__IMUT_integrateMethodFromSourceClass:(Class)sourceClass withSourceSelector:(SEL)sourceSelector byRenamingOriginalSelectorTo:(SEL)originalSelector status:(IMUTLibMethodIntegrationStatus *)status {
     integrateClassMethod(self, sourceClass, sourceSelector, NULL, originalSelector, status);
 }
 
-+ (void)__IMUT_integrateMethodFromSourceClass:(Class)sourceClass withSourceSelector:(SEL)sourceSelector forTargetSelector:(SEL)targetSelector byRenamingItToOriginalSelector:(SEL)originalSelector status:(IMUTLibMethodIntegrationStatus *)status {
++ (void)__IMUT_integrateMethodFromSourceClass:(Class)sourceClass withSourceSelector:(SEL)sourceSelector forTargetSelector:(SEL)targetSelector byRenamingOriginalSelectorTo:(SEL)originalSelector status:(IMUTLibMethodIntegrationStatus *)status {
     integrateClassMethod(self, sourceClass, targetSelector, sourceSelector, originalSelector, status);
 }
 

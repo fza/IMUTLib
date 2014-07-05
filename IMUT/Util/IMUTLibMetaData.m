@@ -18,29 +18,23 @@
 
 SINGLETON
 
-- (id)objectForKey:(NSString *)key default:(id)defaultValue {
+- (NSObject *)objectForKey:(NSString *)key default:(NSObject *)defaultValue {
     @synchronized (self) {
         [self readMetadata];
-        id value = _metadata[key];
+        NSObject *value = _metadata[key];
 
-        return value != nil ? value : defaultValue;
+        return value ?: defaultValue;
     }
 }
 
 - (NSNumber *)numberAndIncr:(NSString *)key default:(NSNumber *)defaultValue isDouble:(BOOL)isDouble {
-    id value = [self objectForKey:key default:defaultValue];
+    NSObject *value = [self objectForKey:key default:defaultValue];
 
-    if (value != nil && [value isKindOfClass:[NSNumber class]]) {
-        NSNumber *newValue;
-        if (isDouble) {
-            newValue = [NSNumber numberWithDouble:[value doubleValue] + 1];
-        } else {
-            newValue = [NSNumber numberWithInteger:[value integerValue] + 1];
-        }
-
+    if (value && [value isKindOfClass:[NSNumber class]]) {
+        NSNumber *newValue = isDouble ? @([(NSNumber *) value doubleValue] + 1) : @([(NSNumber *) value integerValue] + 1);
         [self setObject:newValue forKey:key];
 
-        return value;
+        return (NSNumber *) value;
     }
 
     return nil;
@@ -85,7 +79,7 @@ SINGLETON
 
     if (!absoluteMetadataFilePath) {
         NSString *imutPath = [IMUTLibFileManager absoluteImutDirectoryPath];
-        NSString *metadataFilename = [IMUTMetaFileBasename stringByAppendingPathExtension:@"plist"];
+        NSString *metadataFilename = [kMetaFileBasename stringByAppendingPathExtension:@"plist"];
         absoluteMetadataFilePath = [imutPath stringByAppendingPathComponent:metadataFilename];
     }
 

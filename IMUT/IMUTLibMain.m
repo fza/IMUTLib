@@ -1,6 +1,8 @@
+#import "Macros.h"
 #import "IMUTLibMain.h"
 #import "IMUTLibMain+Internal.h"
 #import "IMUTLibConstants.h"
+#import "IMUTLibModuleRegistry.h"
 
 // Still a prototype, thus major version is 0
 unsigned int const IMUT_MAJOR_VERSION = 0;
@@ -40,7 +42,7 @@ static IMUTLibMain *sharedInstance;
 }
 
 + (void)setup {
-    [self setupWithConfigFromPlistFile:IMUTLibDefaultPlistFilename];
+    [self setupWithConfigFromPlistFile:kDefaultPlistFilename];
 }
 
 + (void)setupWithConfigFromPlistFile:(NSString *)configFile {
@@ -53,7 +55,7 @@ static IMUTLibMain *sharedInstance;
         sharedInstance = [(IMUTLibMain *) [super alloc] initWithConfigFromPlistFile:configFile];
 
         // Autostart?
-        if ([[sharedInstance.config valueForConfigKey:kIMUTLibConfigAutostart default:numNO] boolValue]) {
+        if ([(NSNumber *) [sharedInstance.config valueForConfigKey:kIMUTLibConfigAutostart default:numNO] boolValue]) {
             [sharedInstance start];
         }
     });
@@ -67,12 +69,17 @@ static IMUTLibMain *sharedInstance;
     return sharedInstance;
 }
 
-+ (BOOL)registerModuleWithClass:(Class)moduleClass {
-    return [[IMUTLibModuleRegistry sharedInstance] registerModuleWithClass:moduleClass];
++ (void)registerModuleWithClass:(Class)moduleClass {
+    [[IMUTLibModuleRegistry sharedInstance] registerModuleWithClass:moduleClass];
+}
+
++ (void)registerSessionTimerWithClass:(Class)sessionTimerClass {
+    [[IMUTLibModuleRegistry sharedInstance] registerSessionTimerWithClass:sessionTimerClass];
 }
 
 - (void)start {
-        [self doStart];
+    // Forward to internal implementation
+    [self doStart];
 }
 
 #pragma mark Private

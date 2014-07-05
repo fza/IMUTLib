@@ -10,8 +10,6 @@
 
 - (NSDictionary *)moduleConfigs;
 
-- (NSSet *)enabledModuleNames;
-
-- (id)valueForConfigKey:(NSString *)key default:(id)defaultValue;
+- (NSObject *)valueForConfigKey:(NSString *)key default:(NSObject *)defaultValue;
 
 @end

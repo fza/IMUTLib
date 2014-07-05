@@ -1,9 +1,7 @@
 #import "IMUTLibHeadingModule.h"
-#import "IMUTLibConstants.h"
-#import "IMUTLibHeadingModuleConstants.h"
 #import "IMUTLibHeadingChangeEvent.h"
-#import "IMUTLibSourceEventQueue.h"
-#import "IMUTLibMain.h"
+#import "IMUTLibHeadingModuleConstants.h"
+#import "IMUTLibConstants.h"
 
 @interface IMUTLibHeadingModule ()
 
@@ -15,10 +13,9 @@
 
 @implementation IMUTLibHeadingModule {
     CLLocationManager *_locationManager;
-    BOOL _active;
 }
 
-#pragma mark IMUTLibModule protocol
+#pragma mark IMUTLibModule class
 
 + (NSString *)moduleName {
     return kIMUTLibHeadingModule;
@@ -26,9 +23,9 @@
 
 - (instancetype)initWithConfig:(NSDictionary *)config {
     if (self = [super initWithConfig:config]) {
-        _active = NO;
-
-        [self performSelectorOnMainThread:@selector(initLocationManager) withObject:nil waitUntilDone:NO];
+        [self performSelectorOnMainThread:@selector(initLocationManager)
+                               withObject:nil
+                            waitUntilDone:NO];
     }
 
     return self;
@@ -41,57 +38,46 @@
     };
 }
 
-- (NSSet *)eventsWithCurrentState {
-    IMUTLibHeadingChangeEvent *eventWithCurrentHeading = [self eventWithCurrentHeading];
+- (NSSet *)eventsWithInitialState {
+    IMUTLibHeadingChangeEvent *sourceEvent = [self eventWithCurrentHeading];
 
-    if (eventWithCurrentHeading) {
-        return $(
-            eventWithCurrentHeading
-        );
-    }
-
-    return nil;
+    return sourceEvent ? $(sourceEvent) : nil;
 }
 
-- (void)start {
-    @synchronized (self) {
-        _active = YES;
-        [_locationManager startUpdatingHeading];
-    }
+- (void)startWithSession:(IMUTLibSession *)session {
+    [_locationManager performSelectorOnMainThread:@selector(startUpdatingHeading)
+                                       withObject:nil
+                                    waitUntilDone:YES];
 }
 
-- (void)pause {
-    @synchronized (self) {
-        _active = NO;
-        [_locationManager stopUpdatingHeading];
-    }
+- (void)stopWithSession:(IMUTLibSession *)session {
+    [_locationManager performSelectorOnMainThread:@selector(stopUpdatingHeading)
+                                       withObject:nil
+                                    waitUntilDone:YES];
 }
-
-- (void)resume {
-    [self start];
-}
-
-- (void)terminate {
-    [self pause];
-}
-
-#pragma mark IMUTLibModuleEventedProducer protocol
 
 - (void)registerEventAggregatorBlocksInRegistry:(IMUTLibEventAggregatorRegistry *)registry {
-    IMUTLibEventAggregatorBlock aggregator = ^IMUTLibAggregatorOPReturn(IMUTLibHeadingChangeEvent *sourceEvent, IMUTLibHeadingChangeEvent *lastPersistedSourceEvent, IMUTLibDeltaEntity **deltaEntity) {
-        double newMagneticHeading = sourceEvent.heading.magneticHeading;
-        double oldMagneticHeading = lastPersistedSourceEvent.heading.magneticHeading;
-        double deltaMagneticHeading = oldMagneticHeading - newMagneticHeading;
-
-        if (fabs(deltaMagneticHeading) > [_config[kIMUTLibHeadingModuleConfigMinDeltaHeadingDegrees] doubleValue]) {
-            NSDictionary *deltaParams = @{
-                kIMUTLibHeadingChangeEventParamHeading : [NSNumber numberWithDouble:deltaMagneticHeading]
-            };
-
-            *deltaEntity = [IMUTLibDeltaEntity deltaEntityWithParameters:deltaParams
-                                                             sourceEvent:sourceEvent];
+    IMUTLibEventAggregatorBlock aggregator = ^IMUTLibAggregatorOperation(IMUTLibHeadingChangeEvent *sourceEvent, IMUTLibHeadingChangeEvent *lastPersistedSourceEvent, IMUTLibPersistableEntity **deltaEntity) {
+        if (!lastPersistedSourceEvent) {
+            *deltaEntity = [IMUTLibPersistableEntity entityWithSourceEvent:sourceEvent];
+            (*deltaEntity).entityType = IMUTLibPersistableEntityTypeAbsolute;
 
             return IMUTLibAggregationOperationEnqueue;
+        } else {
+            double newMagneticHeading = sourceEvent.heading.magneticHeading;
+            double oldMagneticHeading = lastPersistedSourceEvent.heading.magneticHeading;
+            double deltaMagneticHeading = oldMagneticHeading - newMagneticHeading;
+
+            if (fabs(deltaMagneticHeading) > [_config[kIMUTLibHeadingModuleConfigMinDeltaHeadingDegrees] doubleValue]) {
+                NSDictionary *deltaParams = @{
+                    kIMUTLibHeadingChangeEventParamHeading : [NSNumber numberWithDouble:deltaMagneticHeading]
+                };
+
+                *deltaEntity = [IMUTLibPersistableEntity entityWithParameters:deltaParams
+                                                                  sourceEvent:sourceEvent];
+
+                return IMUTLibAggregationOperationEnqueue;
+            }
         }
 
         return IMUTLibAggregationOperationDequeue;
@@ -108,15 +94,13 @@
         _locationManager.headingFilter = [_config[kIMUTLibHeadingModuleConfigMinDeltaHeadingDegrees] doubleValue];
         _locationManager.delegate = self;
 
-        if (_active) {
-            [self start];
-        }
+        [_locationManager startUpdatingHeading];
     }
 }
 
 - (void)locationManager:(CLLocationManager *)manager didUpdateHeading:(CLHeading *)newHeading {
     id sourceEvent = [[IMUTLibHeadingChangeEvent alloc] initWithHeading:newHeading];
-    [[IMUTLibSourceEventQueue sharedInstance] enqueueSourceEvent:sourceEvent];
+    [[IMUTLibSourceEventCollection sharedInstance] addSourceEvent:sourceEvent];
 }
 
 - (BOOL)locationManagerShouldDisplayHeadingCalibration:(CLLocationManager *)manager {

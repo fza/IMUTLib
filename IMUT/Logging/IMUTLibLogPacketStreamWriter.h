@@ -1,21 +1,13 @@
 #import <Foundation/Foundation.h>
-#import "IMUTLibLogPacket.h"
-#import "IMUTLibLogPacketStreamEncoder.h"
 
-@class IMUTLibLogPacketStreamWriter;
+#import "IMUTLibLogPacketStreamEncoder.h"
+#import "IMUTLibLogPacket.h"
+
+@protocol IMUTLibStreamLogWriterDelegate;
 
 typedef NS_ENUM(NSUInteger, IMUTLibLogPacketEncoderType) {
     IMUTLibLogPacketEncoderJSON = 1
 };
-
-@protocol IMUTLibStreamLogWriterDelegate
-
-@optional
-// Passing the log packets array as pointer to pointer so that the receiver may
-// completely replace the array object if necessary.
-- (void)logWriter:(IMUTLibLogPacketStreamWriter *)logWriter willWriteLogPackets:(NSArray **)packetQueue;
-
-@end
 
 @interface IMUTLibLogPacketStreamWriter : NSObject <IMUTLibLogPacketStreamEncoderDelegate>
 
@@ -23,14 +15,24 @@ typedef NS_ENUM(NSUInteger, IMUTLibLogPacketEncoderType) {
 @property(nonatomic, readonly, retain) NSString *basename;
 
 // The delegate (= event synchronizer)
-@property(nonatomic, readwrite, weak) id <IMUTLibStreamLogWriterDelegate> delegate;
+@property(nonatomic, readwrite, weak) NSObject <IMUTLibStreamLogWriterDelegate> *delegate;
 
 + (instancetype)writerWithBasename:(NSString *)basename packetEncoderType:(IMUTLibLogPacketEncoderType)encoderType;
 
-- (void)newFile;
+- (void)createFile;
 
-- (void)enqueuePacket:(id <IMUTLibLogPacket>)logPacket;
+- (void)enqueuePacket:(IMUTLibLogPacket *)logPacket;
 
-- (void)closeFileWaitUntilDone:(BOOL)waitUntilDone;
+- (void)closeFile;
 
 @end
+
+@protocol IMUTLibStreamLogWriterDelegate
+
+@optional
+// Passing the log packets array as pointer to pointer of object so that the receiver may
+// completely replace the array object if necessary.
+- (void)logWriter:(IMUTLibLogPacketStreamWriter *)logWriter willWriteLogPackets:(NSArray **)logPackets;
+
+@end
+

@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
-#import "IMUTLibAbstractLogPacket.h"
 
-@interface IMUTLibSessionInitLogPacket : IMUTLibAbstractLogPacket
+#import "IMUTLibLogPacket.h"
+
+@interface IMUTLibSessionInitLogPacket : IMUTLibLogPacket
 
 @end

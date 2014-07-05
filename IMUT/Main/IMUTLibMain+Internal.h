@@ -1,8 +1,7 @@
 #import <Foundation/Foundation.h>
+
 #import "IMUTLibMain.h"
-#import "IMUTLibModuleRegistry.h"
 #import "IMUTLibConfig.h"
-#import "IMUTLibEventSynchronizer.h"
 #import "IMUTLibSession.h"
 
 @interface IMUTLibMain (Internal)
@@ -14,6 +13,8 @@
 @property(nonatomic, readonly, retain) IMUTLibConfig *config;
 
 - (BOOL)readConfigFromPlistFileWithName:(NSString *)plistFileName;
+
+- (BOOL)isPaused;
 
 - (BOOL)isTerminated;
 

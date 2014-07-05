@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 
-@interface IMUTLibBatteryLevelModule : NSObject
+#import "IMUTLibPollingModule.h"
 
+@interface IMUTLibBatteryLevelModule : IMUTLibPollingModule
 
 @end

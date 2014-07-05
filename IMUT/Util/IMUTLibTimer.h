@@ -1,4 +1,5 @@
 #import <Foundation/Foundation.h>
+#import <CoreMedia/CoreMedia.h>
 
 @interface IMUTLibTimer : NSObject
 
@@ -30,13 +31,21 @@
 
 - (void)invalidate;
 
+- (void)runOutAndInvalidateWaitUntilDone:(BOOL)waitUntilDone;
+
+- (void)setInvaliationHandler:(void (^)(void))handler;
+
+- (void)linkWithTimebase:(CMTimebaseRef)timebase;
+
 - (BOOL)pause;
 
 - (BOOL)resume;
+
+- (BOOL)resumeAfter:(NSTimeInterval)interval;
 
 - (void)fireAndPause;
 
 @end
 
 // Convenience function
-IMUTLibTimer *repeatingTimer(NSTimeInterval timeInterval, id target, SEL selector, dispatch_queue_t dispatchQueue, BOOL schedule);
+IMUTLibTimer *makeRepeatingTimer(NSTimeInterval timeInterval, id target, SEL selector, dispatch_queue_t dispatchQueue, BOOL schedule);

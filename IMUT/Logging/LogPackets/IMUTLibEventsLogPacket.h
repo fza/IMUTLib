@@ -1,15 +1,22 @@
 #import <Foundation/Foundation.h>
-#import "IMUTLibAbstractLogPacket.h"
-#import "IMUTLibDeltaEntityBag.h"
 
-@interface IMUTLibEventsLogPacket : IMUTLibAbstractLogPacket
+#import "IMUTLibLogPacket.h"
+#import "IMUTLibPersistableEntityBag.h"
 
-@property(nonatomic, readonly, retain) IMUTLibDeltaEntityBag *deltaEntityBag;
+// The events packet is the most important one as it stores the
+// actual data as gathered on runtime at a specific time
+@interface IMUTLibEventsLogPacket : IMUTLibLogPacket
+
+// The delta entity bag containing the filtered and prepared delta entities
+// ready to be persisted
+@property(nonatomic, readonly, retain) IMUTLibPersistableEntityBag *entityBag;
+
 @property(nonatomic, readonly, assign) NSTimeInterval relativeTime;
 
-+ (instancetype)packetWithDeltaEntityBag:(IMUTLibDeltaEntityBag *)deltaEntityBag
-                  timeIntervalSinceStart:(NSTimeInterval)timeInterval;
++ (instancetype)packetWithDeltaEntityBag:(IMUTLibPersistableEntityBag *)deltaEntityBag
+                                 forTime:(NSTimeInterval)time;
 
-- (void)mergeIn:(IMUTLibEventsLogPacket *)logPacket;
+// Convenience method to merge in logPackets late
+- (void)mergeWith:(IMUTLibEventsLogPacket *)logPacket;
 
 @end

@@ -20,9 +20,9 @@
 + (void)removeTemporaryFiles;
 
 // Rename a file with a temporary path suffix
-+ (void)renameTemporaryFileAtPath:(NSString *)path;
++ (NSString *)renameTemporaryFileAtPath:(NSString *)path;
 
-// The free disk space
-+ (NSNumber *)freeDiskSpaceInBytes;
+// The free disk space in bytes
++ (NSNumber *)freeDiskSpace;
 
 @end

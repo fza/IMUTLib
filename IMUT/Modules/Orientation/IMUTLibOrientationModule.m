@@ -1,9 +1,7 @@
-#import "Macros.h"
 #import <UIKit/UIKit.h>
+
 #import "IMUTLibOrientationModule.h"
 #import "IMUTLibDeviceOrientationChangeEvent.h"
-#import "IMUTLibSourceEventQueue.h"
-#import "IMUTLibMain.h"
 #import "IMUTLibOrientationModuleConstants.h"
 
 static UIDeviceOrientation lastKnownDeviceOrientation;
@@ -23,19 +21,17 @@ static UIDeviceOrientation lastKnownDeviceOrientation;
     lastKnownDeviceOrientation = UIDeviceOrientationPortrait;
 }
 
-#pragma mark IMUTLibModule protocol
+#pragma mark IMUTLibModule class
 
 + (NSString *)moduleName {
     return kIMUTLibOrientationModule;
 }
 
-- (NSSet *)eventsWithCurrentState {
-    return $(
-        [self eventWithCurrentDeviceOrientationAndEnsureCreated:YES]
-    );
+- (NSSet *)eventsWithInitialState {
+    return $([self eventWithCurrentDeviceOrientationAndEnsureCreated:YES]);
 }
 
-- (void)start {
+- (void)startWithSession:(IMUTLibSession *)session {
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(deviceOrientationDidChange)
                                                  name:UIDeviceOrientationDidChangeNotification
@@ -46,25 +42,15 @@ static UIDeviceOrientation lastKnownDeviceOrientation;
     }
 }
 
-- (void)pause {
+- (void)stopWithSession:(IMUTLibSession *)session {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
-- (void)resume {
-    [self start];
-}
-
-- (void)terminate {
-    [self pause];
-}
-
-#pragma mark IMUTLibModuleEventedProducer protocol
-
 - (void)registerEventAggregatorBlocksInRegistry:(IMUTLibEventAggregatorRegistry *)registry {
-    IMUTLibEventAggregatorBlock aggregator = ^IMUTLibAggregatorOPReturn(IMUTLibDeviceOrientationChangeEvent *sourceEvent, IMUTLibDeviceOrientationChangeEvent *lastPersistedSourceEvent, IMUTLibDeltaEntity **deltaEntity) {
-        if ([sourceEvent orientation] != [lastPersistedSourceEvent orientation]) {
-            *deltaEntity = [IMUTLibDeltaEntity deltaEntityWithSourceEvent:sourceEvent];
-            (*deltaEntity).entityType = IMUTLibDeltaEntityTypeStatus;
+    IMUTLibEventAggregatorBlock aggregator = ^IMUTLibAggregatorOperation(IMUTLibDeviceOrientationChangeEvent *sourceEvent, IMUTLibDeviceOrientationChangeEvent *lastPersistedSourceEvent, IMUTLibPersistableEntity **deltaEntity) {
+        if (!lastPersistedSourceEvent || [sourceEvent orientation] != [lastPersistedSourceEvent orientation]) {
+            *deltaEntity = [IMUTLibPersistableEntity entityWithSourceEvent:sourceEvent];
+            (*deltaEntity).entityType = IMUTLibPersistableEntityTypeStatus;
 
             return IMUTLibAggregationOperationEnqueue;
         }
@@ -79,7 +65,7 @@ static UIDeviceOrientation lastKnownDeviceOrientation;
 
 - (void)deviceOrientationDidChange {
     id sourceEvent = [self eventWithCurrentDeviceOrientationAndEnsureCreated:NO];
-    [[IMUTLibSourceEventQueue sharedInstance] enqueueSourceEvent:sourceEvent];
+    [[IMUTLibSourceEventCollection sharedInstance] addSourceEvent:sourceEvent];
 }
 
 - (IMUTLibDeviceOrientationChangeEvent *)eventWithCurrentDeviceOrientationAndEnsureCreated:(BOOL)ensureCreated {

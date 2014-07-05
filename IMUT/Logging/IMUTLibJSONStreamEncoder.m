@@ -1,5 +1,6 @@
+#import <libkern/OSAtomic.h>
+
 #import "IMUTLibJSONStreamEncoder.h"
-#import "IMUTLibFunctions.h"
 
 static NSString *arrayStart = @"[";
 static NSString *separator = @",";
@@ -8,6 +9,7 @@ static NSString *arrayClose = @"\n]";
 
 @interface IMUTLibJSONStreamEncoder ()
 
+// Return a string as NSData object to the delegate
 - (void)writeString:(NSString *)string;
 
 @end
@@ -16,14 +18,18 @@ static NSString *arrayClose = @"\n]";
     BOOL _began;
     BOOL _closed;
     BOOL _encodedFirstObject;
-    dispatch_queue_t _encodingQueue;
+
+    OSSpinLock _lock; // The encoder is locked while writing out its data
 }
 
 - (instancetype)init {
     if (self = [super init]) {
+        _fileExtension = @"json";
         _began = NO;
         _closed = NO;
         _encodedFirstObject = NO;
+
+        _lock = OS_SPINLOCK_INIT;
     }
 
     return self;
@@ -49,25 +55,25 @@ static NSString *arrayClose = @"\n]";
                 [dataString appendString:line];
             }];
 
-            @synchronized (self) {
-                if (_closed) {
-                    return;
-                }
-
-                if (!_began) {
-                    _began = YES;
-                    [dataString insertString:arrayStart atIndex:0];
-                }
-
-                if (_encodedFirstObject) {
-                    [dataString insertString:separator atIndex:0];
-                }
-
-                _encodedFirstObject = YES;
-
-                [self writeString:dataString];
+            OSSpinLockLock(&_lock);
+            if (_closed) {
+                return;
             }
-        } else if ([(NSObject *) self.delegate respondsToSelector:@selector(encoder:encodingError:)]) {
+
+            if (!_began) {
+                _began = YES;
+                [dataString insertString:arrayStart atIndex:0];
+            }
+
+            if (_encodedFirstObject) {
+                [dataString insertString:separator atIndex:0];
+            }
+
+            _encodedFirstObject = YES;
+
+            [self writeString:dataString];
+            OSSpinLockUnlock(&_lock);
+        } else if ([self.delegate respondsToSelector:@selector(encoder:encodingError:)]) {
             [self.delegate encoder:self encodingError:error];
         }
     }
@@ -78,11 +84,11 @@ static NSString *arrayClose = @"\n]";
         return;
     }
 
-    @synchronized (self) {
-        _closed = YES;
-    }
+    OSSpinLockLock(&_lock);
+    _closed = YES;
 
     [self writeString:arrayClose];
+    OSSpinLockUnlock(&_lock);
 }
 
 #pragma mark Private

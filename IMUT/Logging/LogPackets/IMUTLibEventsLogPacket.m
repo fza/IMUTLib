@@ -1,6 +1,6 @@
 #import "IMUTLibEventsLogPacket.h"
-#import "IMUTLibDeltaEntity+Internal.h"
 #import "Macros.h"
+#import "IMUTLibConstants.h"
 
 static NSString *kParamRelativeTime = @"rel-time";
 static NSString *kParamEvents = @"events";
@@ -10,16 +10,11 @@ static NSString *kParamParams = @"params";
 
 @interface IMUTLibEventsLogPacket ()
 
-@property(nonatomic, readwrite, retain) IMUTLibDeltaEntityBag *deltaEntityBag;
-@property(nonatomic, readwrite, assign) NSTimeInterval relativeTime;
-
-- (instancetype)initWithDeltaEntityBag:(IMUTLibDeltaEntityBag *)deltaEntityBag timeIntervalSinceStart:(NSTimeInterval)timeInterval;
+- (instancetype)initWithEntityBag:(IMUTLibPersistableEntityBag *)deltaEntityBag forTime:(NSTimeInterval)time;
 
 @end
 
-@implementation IMUTLibEventsLogPacket {
-    IMUTLibDeltaEntityBag *_deltaEntityBag;
-}
+@implementation IMUTLibEventsLogPacket
 
 DESIGNATED_INIT
 
@@ -27,37 +22,46 @@ DESIGNATED_INIT
     return IMUTLibLogPacketTypeEvents;
 }
 
-+ (instancetype)packetWithDeltaEntityBag:(IMUTLibDeltaEntityBag *)deltaEntityBag timeIntervalSinceStart:(NSTimeInterval)timeInterval {
-    return [[self alloc] initWithDeltaEntityBag:deltaEntityBag
-                         timeIntervalSinceStart:(NSTimeInterval) timeInterval];
++ (instancetype)packetWithDeltaEntityBag:(IMUTLibPersistableEntityBag *)deltaEntityBag forTime:(NSTimeInterval)time {
+    return [[self alloc] initWithEntityBag:deltaEntityBag forTime:(NSTimeInterval) time];
 }
 
-- (void)mergeIn:(IMUTLibEventsLogPacket *)logPacket {
-    [_deltaEntityBag mergeWithBag:logPacket.deltaEntityBag];
+- (void)mergeWith:(IMUTLibEventsLogPacket *)logPacket {
+    [_entityBag mergeWithBag:logPacket.entityBag];
 }
 
 - (NSDictionary *)parameters {
     NSMutableArray *events = [NSMutableArray array];
-    for (IMUTLibDeltaEntity *deltaEntity in self.deltaEntityBag.all) {
-        [events addObject:@{
-            kParamEvent : deltaEntity.eventName,
-            kParamType : [deltaEntity entityTypeString],
-            kParamParams : deltaEntity.parameters
-        }];
+    for (IMUTLibPersistableEntity *entity in self.entityBag.all) {
+        NSMutableDictionary *event = $MD(@{
+            kParamEvent : entity.eventName,
+            kParamType : [entity entityTypeString]
+        });
+
+        if (entity.parameters) {
+            [event setObject:entity.parameters forKey:kParamParams];
+        }
+
+        NSString *entityMarking = [entity entityMarkingString];
+        if (entityMarking) {
+            [event setObject:entityMarking forKey:kEntityMarking];
+        }
+
+        [events addObject:event];
     }
 
     return @{
-        kParamRelativeTime : @(round(self.relativeTime * 100.0) / 100.0),
+        kParamRelativeTime : @(round(_relativeTime * 100.0) / 100.0),
         kParamEvents : events
     };
 }
 
 #pragma mark Private
 
-- (instancetype)initWithDeltaEntityBag:(IMUTLibDeltaEntityBag *)deltaEntityBag timeIntervalSinceStart:(NSTimeInterval)timeInterval {
+- (instancetype)initWithEntityBag:(IMUTLibPersistableEntityBag *)deltaEntityBag forTime:(NSTimeInterval)time {
     if (self = [super init]) {
-        self.deltaEntityBag = deltaEntityBag;
-        self.relativeTime = timeInterval;
+        _entityBag = deltaEntityBag;
+        _relativeTime = time;
     }
 
     return self;

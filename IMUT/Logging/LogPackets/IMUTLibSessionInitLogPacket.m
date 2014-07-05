@@ -1,6 +1,7 @@
 #import <UIKit/UIKit.h>
-#import "IMUTLibMain+Internal.h"
 #import "IMUTLibSessionInitLogPacket.h"
+#import "IMUTLibModuleRegistry.h"
+#import "IMUTLibMain+Internal.h"
 
 @implementation IMUTLibSessionInitLogPacket
 
@@ -14,7 +15,7 @@
     NSBundle *mainAppBundle = [NSBundle mainBundle];
 
     return @{
-        @"modules" : [[[IMUTLibMain imut].config enabledModuleNames] allObjects],
+        @"modules" : [[IMUTLibModuleRegistry sharedInstance].enabledModulesByName allObjects],
         @"meta" : @{
             @"imut-version" : [IMUTLibMain imutVersion],
             @"platform-name" : currentDevice.systemName,
@@ -23,19 +24,19 @@
             @"app-id" : (NSString *) [mainAppBundle objectForInfoDictionaryKey:@"CFBundleIdentifier"],
             @"app-version" : (NSString *) [mainAppBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"],
             @"screen-size" : @{
-                @"scale" : [NSNumber numberWithDouble:screen.scale],
+                @"scale" : @(screen.scale),
                 @"points" : @{
-                    @"width" : [NSNumber numberWithInteger:(int) screen.bounds.size.width],
-                    @"height" : [NSNumber numberWithInteger:(int) screen.bounds.size.height],
+                    @"width" : @((int) screen.bounds.size.width),
+                    @"height" : @((int) screen.bounds.size.height),
                 },
                 @"device" : @{
-                    @"width" : [NSNumber numberWithInteger:(int) (screen.bounds.size.width * screen.scale)],
-                    @"height" : [NSNumber numberWithInteger:(int) (screen.bounds.size.height * screen.scale)]
+                    @"width" : @((int) (screen.bounds.size.width * screen.scale)),
+                    @"height" : @((int) (screen.bounds.size.height * screen.scale))
                 }
             },
             @"app-frame-size-points" : @{
-                @"width" : [NSNumber numberWithInteger:(int) screen.applicationFrame.size.width],
-                @"height" : [NSNumber numberWithInteger:(int) screen.applicationFrame.size.height]
+                @"width" : @((int) screen.applicationFrame.size.width),
+                @"height" : @((int) screen.applicationFrame.size.height)
             }
         }
     };

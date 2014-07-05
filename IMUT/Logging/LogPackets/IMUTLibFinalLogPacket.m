@@ -12,9 +12,8 @@ static NSString *kParamEventCount = @"event-count";
 }
 
 - (NSDictionary *)parameters {
-
     IMUTLibEventSynchronizer *synchronizer = [IMUTLibEventSynchronizer sharedInstance];
-    NSTimeInterval sessionDuration = [synchronizer alignTimeInterval:([IMUTLibMain imut].session.sessionDuration)];
+    NSTimeInterval sessionDuration = [synchronizer alignTimeInterval:([IMUTLibMain imut].session.duration)];
 
     return @{
         kParamSessionDuration : @(round(sessionDuration * 100.0) / 100.0),

@@ -9,12 +9,18 @@
                                                                withObject:notification
                                                             waitUntilDone:waitUntilDone];
     } else {
-        dispatch_async(mainImutDispatchQueue(DISPATCH_QUEUE_PRIORITY_DEFAULT), ^{
+        void (^postNotificationBlock)(void) = ^{
             [[NSNotificationCenter defaultCenter] performSelector:@selector(postNotification:)
                                                          onThread:[NSThread currentThread]
                                                        withObject:notification
                                                     waitUntilDone:waitUntilDone];
-        });
+        };
+
+        if (waitUntilDone) {
+            dispatch_sync(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), postNotificationBlock);
+        } else {
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), postNotificationBlock);
+        }
     }
 }
 

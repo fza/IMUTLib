@@ -1,9 +1,11 @@
 #import <Foundation/Foundation.h>
-#import "IMUTLibLogPacket.h"
+
 #import "IMUTLibLogPacketStreamEncoder.h"
 
 @interface IMUTLibJSONStreamEncoder : NSObject <IMUTLibLogPacketStreamEncoder>
 
-@property(atomic, readwrite, weak) id <IMUTLibLogPacketStreamEncoderDelegate> delegate;
+@property(nonatomic, readonly, retain) NSString *fileExtension;
+
+@property(atomic, readwrite, weak) NSObject <IMUTLibLogPacketStreamEncoderDelegate> *delegate;
 
 @end

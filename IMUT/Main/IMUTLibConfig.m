@@ -1,10 +1,9 @@
 #import "IMUTLibConfig.h"
-#import "IMUTLibConstants.h"
 #import "Macros.h"
+#import "IMUTLibConstants.h"
 
 @implementation IMUTLibConfig {
     NSDictionary *_config;
-    NSSet *_enabledModuleNames;
 }
 
 DESIGNATED_INIT
@@ -51,27 +50,21 @@ DESIGNATED_INIT
         if ([obj isEqual:numYES]) {
             moduleConfigs[key] = @{};
             [enabledModuleNames addObject:key];
-        } else if ([obj isKindOfClass:objc_getClass("NSDictionary")]) {
+        } else if ([obj isKindOfClass:[NSDictionary class]]) {
             moduleConfigs[key] = obj;
             [enabledModuleNames addObject:key];
         }
     }];
 
-    _enabledModuleNames = [NSSet setWithSet:enabledModuleNames];
-
     return moduleConfigs;
 }
 
-- (NSSet *)enabledModuleNames {
-    return _enabledModuleNames;
-}
-
-- (id)valueForConfigKey:(NSString *)key default:(id)defaultValue {
+- (NSObject *)valueForConfigKey:(NSString *)key default:(NSObject *)defaultValue {
     if ([key isEqualToString:@"modules"]) {
-        return defaultValue;
+        return [self moduleConfigs];
     }
 
-    id value = [_config objectForKey:key];
+    NSObject *value = [_config objectForKey:key];
 
     if (!value) {
         value = defaultValue;

@@ -1,9 +1,7 @@
 #import "IMUTLibLocationModule.h"
-#import "IMUTLibConstants.h"
-#import "IMUTLibLocationModuleConstants.h"
 #import "IMUTLibLocationChangeEvent.h"
-#import "IMUTLibSourceEventQueue.h"
-#import "IMUTLibMain.h"
+#import "IMUTLibLocationModuleConstants.h"
+#import "IMUTLibConstants.h"
 
 @interface IMUTLibLocationModule ()
 
@@ -15,10 +13,9 @@
 
 @implementation IMUTLibLocationModule {
     CLLocationManager *_locationManager;
-    BOOL _active;
 }
 
-#pragma mark IMUTLibModule protocol
+#pragma mark IMUTLibModule class
 
 + (NSString *)moduleName {
     return kIMUTLibLocationModule;
@@ -26,8 +23,6 @@
 
 - (instancetype)initWithConfig:(NSDictionary *)config {
     if (self = [super initWithConfig:config]) {
-        _active = NO;
-
         [self performSelectorOnMainThread:@selector(initLocationManager) withObject:nil waitUntilDone:NO];
     }
 
@@ -41,58 +36,46 @@
     };
 }
 
-- (NSSet *)eventsWithCurrentState {
-    IMUTLibLocationChangeEvent *eventWithCurrentLocation = [self eventWithCurrentLocation];
+- (NSSet *)eventsWithInitialState {
+    IMUTLibLocationChangeEvent *sourceEvent = [self eventWithCurrentLocation];
 
-    if (eventWithCurrentLocation) {
-        return $(
-            eventWithCurrentLocation
-        );
-    }
-
-    return nil;
+    return sourceEvent ? $(sourceEvent) : nil;
 }
 
-- (void)start {
-    @synchronized (self) {
-        _active = YES;
-        [_locationManager startUpdatingLocation];
-    }
+- (void)startWithSession:(IMUTLibSession *)session {
+    [_locationManager performSelectorOnMainThread:@selector(startUpdatingLocation)
+                                       withObject:nil
+                                    waitUntilDone:YES];
 }
 
-- (void)pause {
-    @synchronized (self) {
-        _active = NO;
-        [_locationManager stopUpdatingLocation];
-    }
+- (void)stopWithSession:(IMUTLibSession *)session {
+    [_locationManager performSelectorOnMainThread:@selector(stopUpdatingLocation)
+                                       withObject:nil
+                                    waitUntilDone:YES];
 }
-
-- (void)resume {
-    [self start];
-}
-
-- (void)terminate {
-    [self pause];
-}
-
-#pragma mark IMUTLibModuleEventedProducer protocol
 
 - (void)registerEventAggregatorBlocksInRegistry:(IMUTLibEventAggregatorRegistry *)registry {
-    IMUTLibEventAggregatorBlock aggregator = ^IMUTLibAggregatorOPReturn(IMUTLibLocationChangeEvent *sourceEvent, IMUTLibLocationChangeEvent *lastPersistedSourceEvent, IMUTLibDeltaEntity **deltaEntity) {
-        CLLocation *newLocation = sourceEvent.location;
-        CLLocation *oldLocation = lastPersistedSourceEvent.location;
-        double distance = [newLocation distanceFromLocation:oldLocation];
-
-        if (distance >= [_config[kIMUTLibLocationModuleConfigMinDistanceMeters] doubleValue]) {
-            NSDictionary *deltaParams = @{
-                kIMUTLibLocationChangeEventParamDistance : [NSNumber numberWithDouble:(round(distance * 100.0) / 100.0)]
-            };
-
-            *deltaEntity = [IMUTLibDeltaEntity deltaEntityWithParameters:deltaParams
-                                                             sourceEvent:sourceEvent];
-            (*deltaEntity).shouldMergeWithSourceEventParams = YES;
+    IMUTLibEventAggregatorBlock aggregator = ^IMUTLibAggregatorOperation(IMUTLibLocationChangeEvent *sourceEvent, IMUTLibLocationChangeEvent *lastPersistedSourceEvent, IMUTLibPersistableEntity **deltaEntity) {
+        if (!lastPersistedSourceEvent) {
+            *deltaEntity = [IMUTLibPersistableEntity entityWithSourceEvent:sourceEvent];
+            (*deltaEntity).entityType = IMUTLibPersistableEntityTypeAbsolute;
 
             return IMUTLibAggregationOperationEnqueue;
+        } else {
+            CLLocation *newLocation = sourceEvent.location;
+            CLLocation *oldLocation = lastPersistedSourceEvent.location;
+            double distance = [newLocation distanceFromLocation:oldLocation];
+
+            if (distance >= [_config[kIMUTLibLocationModuleConfigMinDistanceMeters] doubleValue]) {
+                NSDictionary *deltaParams = @{
+                    kIMUTLibLocationChangeEventParamDistance : [NSNumber numberWithDouble:(round(distance * 100.0) / 100.0)]
+                };
+
+                *deltaEntity = [IMUTLibPersistableEntity entityWithParameters:deltaParams sourceEvent:sourceEvent];
+                (*deltaEntity).shouldMergeWithSourceEventParams = YES;
+
+                return IMUTLibAggregationOperationEnqueue;
+            }
         }
 
         return IMUTLibAggregationOperationDequeue;
@@ -114,15 +97,13 @@
         _locationManager.delegate = self;
         _locationManager.distanceFilter = [_config[kIMUTLibLocationModuleConfigMinDistanceMeters] doubleValue];
 
-        if (_active) {
-            [self start];
-        }
+        [_locationManager startUpdatingLocation];
     }
 }
 
 - (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray *)locations {
     id sourceEvent = [[IMUTLibLocationChangeEvent alloc] initWithLocation:[locations lastObject]];
-    [[IMUTLibSourceEventQueue sharedInstance] enqueueSourceEvent:sourceEvent];
+    [[IMUTLibSourceEventCollection sharedInstance] addSourceEvent:sourceEvent];
 }
 
 #pragma mark Private

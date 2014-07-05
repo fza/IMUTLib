@@ -1,6 +1,6 @@
 #import <libkern/OSAtomic.h>
-#import "IMUTLibTimer.h"
 #import "Macros.h"
+#import "IMUTLibTimer.h"
 
 #define LOCK_INVALID 1
 #define LOCK_PAUSED 2
@@ -29,10 +29,15 @@
     BOOL _repeats;
 
     dispatch_queue_t _privateSerialQueue;
-    dispatch_source_t _timer;
+    dispatch_source_t _dispatchSource;
+
+    void(^_invalidationHandler)(void);
 
     NSTimeInterval _timeInterval;
     NSTimeInterval _tolerance;
+    NSTimeInterval _startAfter;
+
+    CMTimebaseRef _timebaseRef;
 
     OSSpinLock _callLock;
 
@@ -78,6 +83,7 @@ DESIGNATED_INIT
 
         _timeInterval = timeInterval;
         _tolerance = 0;
+        _startAfter = 0;
 
         _scheduled = NO;
 
@@ -161,6 +167,63 @@ DESIGNATED_INIT
     }
 }
 
+- (void)runOutAndInvalidateWaitUntilDone:(BOOL)waitUntilDone {
+    if (!TEST_INVALID) {
+        if (waitUntilDone) {
+            dispatch_group_t dispatchGroup = dispatch_group_create();
+            dispatch_group_enter(dispatchGroup);
+
+            dispatch_group_async(dispatchGroup, _privateSerialQueue, ^{
+                [self teardownTimer];
+                dispatch_group_leave(dispatchGroup);
+            });
+
+            dispatch_group_wait(dispatchGroup, DISPATCH_TIME_FOREVER);
+        } else {
+            dispatch_async(_privateSerialQueue, ^{
+                [self teardownTimer];
+            });
+        }
+    }
+}
+
+- (void)setInvaliationHandler:(void (^)(void))handler {
+    if (!TEST_INVALID) {
+        _invalidationHandler = handler;
+
+        [self resetTimerProperties];
+    }
+}
+
+- (void)linkWithTimebase:(CMTimebaseRef)timebase {
+    @synchronized (self) {
+        if (TEST_INVALID) {
+            return;
+        }
+
+        if (!_scheduled) {
+            _timebaseRef = timebase;
+
+            return;
+        }
+
+        BOOL wasPaused = (TEST_PAUSED);
+
+        if (!wasPaused) {
+            [self pause];
+        }
+
+        if (_timebaseRef) {
+            CMTimebaseRemoveTimerDispatchSource(_timebaseRef, _dispatchSource);
+            _timebaseRef = timebase;
+        }
+
+        if (!wasPaused) {
+            [self resume];
+        }
+    }
+}
+
 - (BOOL)pause {
     @synchronized (self) {
         if (_scheduled && !TEST_INVALID && LOCK(LOCK_PAUSED)) {
@@ -174,10 +237,16 @@ DESIGNATED_INIT
 }
 
 - (BOOL)resume {
+    return [self resumeAfter:0];
+}
+
+- (BOOL)resumeAfter:(NSTimeInterval)interval {
     @synchronized (self) {
+        _startAfter = interval;
+
         if (!_scheduled) {
             return [self schedule];
-        } else if (!TEST_INVALID && UNLOCK(LOCK_PAUSED) && dispatch_source_testcancel(_timer)) {
+        } else if (!TEST_INVALID && UNLOCK(LOCK_PAUSED) && dispatch_source_testcancel(_dispatchSource)) {
             [self setupTimer];
 
             return YES;
@@ -203,37 +272,55 @@ DESIGNATED_INIT
 #pragma mark Private
 
 - (void)setupTimer {
-    _timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, _privateSerialQueue);
+    _dispatchSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, _privateSerialQueue);
 
     [self resetTimerProperties];
 
     __weak IMUTLibTimer *weakSelf = self;
-    dispatch_source_set_event_handler(_timer, ^{
+    dispatch_source_set_event_handler(_dispatchSource, ^{
         [weakSelf timerFired];
     });
 
-    dispatch_resume(_timer);
+    if (_timebaseRef) {
+        CMTimebaseAddTimerDispatchSource(_timebaseRef, _dispatchSource);
+    }
+
+    dispatch_resume(_dispatchSource);
 }
 
 - (void)teardownTimer {
-    dispatch_source_cancel(_timer);
+    dispatch_source_cancel(_dispatchSource);
 }
 
 - (void)resetTimerProperties {
-    uint64_t intervalInNanoseconds = (uint64_t) (_timeInterval * NSEC_PER_SEC);
-    uint64_t toleranceInNanoseconds = (uint64_t) (_tolerance * NSEC_PER_SEC);
+    if (_dispatchSource) {
+        uint64_t startAfterInNanoseconds = (uint64_t) (_startAfter * NSEC_PER_SEC);
+        uint64_t intervalInNanoseconds = (uint64_t) (_timeInterval * NSEC_PER_SEC);
+        uint64_t toleranceInNanoseconds = (uint64_t) (_tolerance * NSEC_PER_SEC);
 
-    dispatch_source_set_timer(_timer,
-        dispatch_time(DISPATCH_TIME_NOW, intervalInNanoseconds),
-        intervalInNanoseconds,
-        toleranceInNanoseconds
-    );
+        dispatch_source_set_timer(
+            _dispatchSource,
+            dispatch_time(DISPATCH_TIME_NOW, startAfterInNanoseconds),
+            intervalInNanoseconds,
+            toleranceInNanoseconds
+        );
+
+        if (_invalidationHandler) {
+            dispatch_source_set_cancel_handler(_dispatchSource, ^{
+                _invalidationHandler();
+            });
+        }
+    }
 }
 
 - (void)timerFired {
-    // If we can't acquire the lock this means that the `fireAndPause`
-    // method is running
-    if(OSSpinLockTry(&_callLock)) {
+    if (TEST_INVALID) {
+        return;
+    }
+
+    // If we can't acquire the lock immediately this means that the `fireAndPause`
+    // method is running and we are not supposed to run anyway
+    if (OSSpinLockTry(&_callLock)) {
         [self callSelectorOnTarget];
 
         if (!_repeats) {
@@ -245,10 +332,6 @@ DESIGNATED_INIT
 }
 
 - (void)callSelectorOnTarget {
-    if (TEST_INVALID) {
-        return;
-    }
-
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
     [_target performSelector:_selector withObject:self];
@@ -257,7 +340,7 @@ DESIGNATED_INIT
 
 @end
 
-IMUTLibTimer *repeatingTimer(NSTimeInterval timeInterval, id target, SEL selector, dispatch_queue_t dispatchQueue, BOOL schedule) {
+IMUTLibTimer *makeRepeatingTimer(NSTimeInterval timeInterval, id target, SEL selector, dispatch_queue_t dispatchQueue, BOOL schedule) {
     IMUTLibTimer *timer = [[IMUTLibTimer alloc] initWithTimeInterval:timeInterval
                                                               target:target
                                                             selector:selector

@@ -1,8 +1,8 @@
 #import <Foundation/Foundation.h>
-#import "IMUTLibSession.h"
-#import "IMUTLibDeltaEntityBag.h"
+
 #import "IMUTLibLogPacketStreamWriter.h"
 #import "Macros.h"
+#import "IMUTLibPersistableEntity.h"
 
 // The synchronizer is the interface between the data capturing mechanism and
 // the log writing. The aggregator(s) enqueue delta entities and the synchronizer
@@ -11,24 +11,28 @@
 // time source module started.
 @interface IMUTLibEventSynchronizer : NSObject <IMUTLibStreamLogWriterDelegate>
 
+@property(nonatomic, readonly, assign) NSTimeInterval lastPersistedEntityTime;
+
 @property(nonatomic, readwrite, assign) NSTimeInterval syncTimeInterval;
 
 @property(nonatomic, readonly, retain) IMUTLibLogPacketStreamWriter *logWriter;
+
+@property(nonatomic, readonly, retain) dispatch_queue_t dispatchQueue;
 
 @property(nonatomic, readonly) unsigned long eventCount;
 
 SINGLETON_INTERFACE
 
 // Return the entity last persisted for a given key
-- (IMUTLibDeltaEntity *)persistedEntityForKey:(NSString *)key;
+- (IMUTLibPersistableEntity *)persistedEntityForKey:(NSString *)key;
 
-// The aggregator(s) place newly created delta entities using this method
-- (void)enqueueDeltaEntity:(id)deltaEntity;
+// The aggregator(s) place newly created entities using this method
+- (void)enqueueEntity:(IMUTLibPersistableEntity *)entity;
 
 // If an aggregator decides that the source event of the last persisted
 // entity equals the most recent one, it must dequeue the currently
 // queued delta entity, so that the synchronizer won't persist it again.
-- (void)dequeueDeltaEntityWithKey:(NSString *)key;
+- (void)dequeueEntityWithKey:(NSString *)key;
 
 // Clears the cache
 - (void)clearCache;

@@ -1,24 +1,29 @@
 #import <Foundation/Foundation.h>
 
-@protocol IMUTLibLogPacketStreamEncoder;
+@protocol IMUTLibLogPacketStreamEncoderDelegate;
 
-@protocol IMUTLibLogPacketStreamEncoderDelegate
-
-- (void)encoder:(id <IMUTLibLogPacketStreamEncoder>)encoder encodedData:(NSData *)data;
-
-@optional
-- (void)encoder:(id <IMUTLibLogPacketStreamEncoder>)encoder encodingError:(NSError *)error;
-
-@end
-
+// Abstract the log packet encoder, so that it may be possible to have
+// additional encoders apart from the generic JSON encoder
 @protocol IMUTLibLogPacketStreamEncoder
 
-@property(atomic, readwrite, weak) id <IMUTLibLogPacketStreamEncoderDelegate> delegate;
+@property(nonatomic, readonly, retain) NSString *fileExtension;
 
-- (void)encodeObject:(id)object;
+@property(atomic, readwrite, weak) NSObject <IMUTLibLogPacketStreamEncoderDelegate> *delegate;
+
+- (void)encodeObject:(NSObject *)object;
 
 - (void)beginEncoding;
 
 - (void)endEncoding;
+
+@end
+
+// The delegate onto which an encoder should posts its streamed encoded data or errors
+@protocol IMUTLibLogPacketStreamEncoderDelegate
+
+- (void)encoder:(NSObject <IMUTLibLogPacketStreamEncoder> *)encoder encodedData:(NSData *)data;
+
+@optional
+- (void)encoder:(NSObject <IMUTLibLogPacketStreamEncoder> *)encoder encodingError:(NSError *)error;
 
 @end

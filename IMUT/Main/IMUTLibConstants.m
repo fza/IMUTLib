@@ -1,5 +1,5 @@
-#import "IMUTLibConstants.h"
 #import "Macros.h"
+#import "IMUTLibConstants.h"
 
 // Exceptions
 NSString *const IMUTLibInitWithoutConfigrationException = BUNDLE_IDENTIFIER_CONCAT("init-without-configuration");
@@ -9,14 +9,15 @@ NSString *const IMUTLibFailedToReadConfigurationException = BUNDLE_IDENTIFIER_CO
 
 // Notifications
 NSString *const IMUTLibWillStartNotification = BUNDLE_IDENTIFIER_CONCAT("will-start");
-NSString *const IMUTLibWillPauseNotification = BUNDLE_IDENTIFIER_CONCAT("will-pause");
+NSString *const IMUTLibWillPauseNotification = BUNDLE_IDENTIFIER_CONCAT("will-_pause");
 NSString *const IMUTLibDidResumeNotification = BUNDLE_IDENTIFIER_CONCAT("did-resume");
 NSString *const IMUTLibWillTerminateNotification = BUNDLE_IDENTIFIER_CONCAT("will-terminate");
+NSString *const IMUTLibModuleRegistryWillFreezeNotification = BUNDLE_IDENTIFIER_CONCAT("registry.will-freeze");
 NSString *const IMUTLibModuleRegistryDidFreezeNotification = BUNDLE_IDENTIFIER_CONCAT("registry.did-freeze");
-NSString *const IMUTLibDidCreateSessionNotification = BUNDLE_IDENTIFIER_CONCAT("session.did-create");
+NSString *const IMUTLibDidCreateSessionNotification = BUNDLE_IDENTIFIER_CONCAT("session.created");
 NSString *const IMUTLibDidInvalidateSessionNotification = BUNDLE_IDENTIFIER_CONCAT("session.invalidated");
-NSString *const IMUTLibClockDidStartNotification = BUNDLE_IDENTIFIER_CONCAT("timesource.did-start");
-NSString *const IMUTLibClockDidStopNotification = BUNDLE_IDENTIFIER_CONCAT("timesource.will-stop");
+NSString *const IMUTLibClockDidStartNotification = BUNDLE_IDENTIFIER_CONCAT("timer.did-start");
+NSString *const IMUTLibClockDidStopNotification = BUNDLE_IDENTIFIER_CONCAT("timer.will-stop");
 NSString *const IMUTLibEventSynchronizerDidStartNotification = BUNDLE_IDENTIFIER_CONCAT("synchronizer.did-start");
 NSString *const IMUTLibEventSynchronizerWillStopNotification = BUNDLE_IDENTIFIER_CONCAT("synchronizer.will-stop");
 
@@ -28,12 +29,12 @@ NSString *const kIMUTLibConfigSynchronizationTimeInterval = @"synchronizationTim
 
 
 // Delta entity type keys
-NSString *const kIMUTLibDeltaEntityTypeAbsolute = @"abs";
-NSString *const kIMUTLibDeltaEntityTypeDelta = @"delta";
-NSString *const kIMUTLibDeltaEntityTypeStatus = @"status";
-NSString *const kIMUTLibDeltaEntityTypeMixed = @"mixed";
-NSString *const kIMUTLibDeltaEntityTypeOther = @"other";
-NSString *const kIMUTLibDeltaEntityTypeUnknown = @"unknown";
+NSString *const kIMUTLibPersistableEntityTypeAbsolute = @"abs";
+NSString *const kIMUTLibPersistableEntityTypeDelta = @"delta";
+NSString *const kIMUTLibPersistableEntityTypeStatus = @"status";
+NSString *const kIMUTLibPersistableEntityTypeMixed = @"mixed";
+NSString *const kIMUTLibPersistableEntityTypeOther = @"other";
+NSString *const kIMUTLibPersistableEntityTypeUnknown = @"unknown";
 
 
 // Log packet type keys
@@ -44,17 +45,18 @@ NSString *const kIMUTLibLogPacketTypeFinal = @"final";
 
 
 // Misc constants
-NSString* const kDefault = @"default";
+NSString *const kDefault = @"default";
 NSString *const kUnknown = @"unknown";
-NSString *const kSessionId = @"sessionId";
-NSString *const kTimeSource = @"timeSource";
-NSString *const kStartDate = @"startDate";
-NSString *const kSessionDuration = @"sessionDuration";
-NSString *const kIMUTLibInitialEventsPacket = @"initial";
-NSString *const kIMUTNextSortingNumber = @"nextSortingNumber";
-NSString *const IMUTLibDefaultPlistFilename = @"IMUT.plist";
-NSString *const IMUTLibTempFileExtension = @"tmp";
-NSString *const IMUTMetaFileBasename = @"imut--meta";
+NSString *const kParamAbsoluteDateTime = @"abs-date-time";
+NSString *const kParamTimebaseInfo = @"timebase";
+NSString *const kEntityMarking = @"mark";
+NSString *const kEntityMarkInitial = @"initial";
+NSString *const kEntityMarkFinal = @"final";
+NSString *const kDefaultSessionTimer = @"default timer";
+NSString *const kNextSortingNumber = @"nextSortingNumber";
+NSString *const kDefaultPlistFilename = @"IMUT.plist";
+NSString *const kTempFileExtension = @"tmp";
+NSString *const kMetaFileBasename = @"imut--meta";
 
 
 // Initializers for special constants (non-compile-time constants)

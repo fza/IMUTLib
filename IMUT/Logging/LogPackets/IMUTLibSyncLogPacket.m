@@ -1,9 +1,8 @@
-#import "IMUTLibMain+Internal.h"
 #import "IMUTLibSyncLogPacket.h"
+#import "IMUTLibSession.h"
 #import "IMUTLibFunctions.h"
-
-static NSString *kParamAbsoluteDateTime = @"abs-date-time";
-static NSString *kParamTimeSourceInfo = @"time-source";
+#import "IMUTLibMain+Internal.h"
+#import "IMUTLibConstants.h"
 
 @implementation IMUTLibSyncLogPacket
 
@@ -13,10 +12,10 @@ static NSString *kParamTimeSourceInfo = @"time-source";
 
 - (NSDictionary *)parameters {
     IMUTLibSession *session = [IMUTLibMain imut].session;
-    
+
     return @{
         kParamAbsoluteDateTime : iso8601StringFromDate(session.startDate),
-        kParamTimeSourceInfo : [session.timeSource timeSourceInfo]
+        kParamTimebaseInfo : [session timerInfo]
     };
 }
 

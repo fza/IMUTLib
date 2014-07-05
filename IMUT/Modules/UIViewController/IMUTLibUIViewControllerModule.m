@@ -1,8 +1,8 @@
 #import "IMUTLibUIViewControllerModule.h"
-#import "IMUTLibConstants.h"
-#import "IMUTLibUIViewControllerModuleConstants.h"
 #import "IMUTLibUIViewControllerModule+SourceEventGeneration.h"
-#import "IMUTLibMain.h"
+#import "IMUTLibUIViewControllerModuleConstants.h"
+
+#import "IMUTLibConstants.h"
 
 @implementation IMUTLibUIViewControllerModule
 
@@ -20,61 +20,29 @@
     };
 }
 
-- (NSSet *)eventsWithCurrentState {
+- (NSSet *)eventsWithInitialState {
     [self ensureHierarchyAvailable];
 
-    IMUTLibUIViewControllerChangeEvent *eventWithFrontMostViewController = [self sourceEventWithViewController:[self frontMostViewController]];
-    if (eventWithFrontMostViewController) {
-        return $(
-            eventWithFrontMostViewController
-        );
-    }
+    IMUTLibUIViewControllerChangeEvent *sourceEvent = [self sourceEventWithViewController:[self frontMostViewController]];
 
-    return nil;
+    return sourceEvent ? $(sourceEvent) : nil;
 }
 
-- (void)start {
+- (void)startWithSession:(IMUTLibSession *)session {
     [self startSourceEventGeneration];
 }
 
-- (void)pause {
+- (void)stopWithSession:(IMUTLibSession *)session {
     [self stopSourceEventGeneration];
-}
-
-- (void)resume {
-    [self start];
-}
-
-- (void)terminate {
-    [self pause];
-}
-
-- (IMUTLibUIViewControllerChangeEvent *)sourceEventWithViewController:(UIViewController *)viewController {
-    static NSUInteger classNameRepresentation = 0;
-
-    if (classNameRepresentation == 0) {
-        if ([_config[kIMUTLibUIViewControllerModuleConfigUseFullClassName] boolValue]) {
-            classNameRepresentation = IMUTLibUIViewControllerModuleClassNameRepresentationFull;
-        } else {
-            classNameRepresentation = IMUTLibUIViewControllerModuleClassNameRepresentationShort;
-        }
-    }
-
-    if (viewController) {
-        return [[IMUTLibUIViewControllerChangeEvent alloc] initWithViewControllerFullClassName:NSStringFromClass([viewController class])
-                                                                             useRepresentation:(IMUTLibUIViewControllerModuleClassNameRepresentation) classNameRepresentation];
-    }
-
-    return nil;
 }
 
 #pragma mark IMUTLibModuleEventedProducer protocol
 
 - (void)registerEventAggregatorBlocksInRegistry:(IMUTLibEventAggregatorRegistry *)registry {
-    IMUTLibEventAggregatorBlock aggregator = ^IMUTLibAggregatorOPReturn(IMUTLibUIViewControllerChangeEvent *sourceEvent, IMUTLibUIViewControllerChangeEvent *lastPersistedSourceEvent, IMUTLibDeltaEntity **deltaEntity) {
-        if (![[sourceEvent fullClassName] isEqualToString:[lastPersistedSourceEvent fullClassName]]) {
-            *deltaEntity = [IMUTLibDeltaEntity deltaEntityWithSourceEvent:sourceEvent];
-            (*deltaEntity).entityType = IMUTLibDeltaEntityTypeOther;
+    IMUTLibEventAggregatorBlock aggregator = ^IMUTLibAggregatorOperation(IMUTLibUIViewControllerChangeEvent *sourceEvent, IMUTLibUIViewControllerChangeEvent *lastPersistedSourceEvent, IMUTLibPersistableEntity **deltaEntity) {
+        if (!lastPersistedSourceEvent || ![[sourceEvent fullClassName] isEqualToString:[lastPersistedSourceEvent fullClassName]]) {
+            *deltaEntity = [IMUTLibPersistableEntity entityWithSourceEvent:sourceEvent];
+            (*deltaEntity).entityType = IMUTLibPersistableEntityTypeOther;
 
             return IMUTLibAggregationOperationEnqueue;
         }

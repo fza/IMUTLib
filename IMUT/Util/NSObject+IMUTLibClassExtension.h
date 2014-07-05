@@ -16,14 +16,14 @@ typedef NS_ENUM(NSUInteger, IMUTLibMethodIntegrationStatus) {
 
 + (void)__IMUT_integrateMethodFromSourceClass:(Class)sourceClass
                            withSourceSelector:(SEL)sourceSelector
-         byRenamingOriginalSelectorToSelector:(SEL)originalSelector
+                 byRenamingOriginalSelectorTo:(SEL)originalSelector
                                        status:(IMUTLibMethodIntegrationStatus *)status;
 
 
 + (void)__IMUT_integrateMethodFromSourceClass:(Class)sourceClass
                            withSourceSelector:(SEL)sourceSelector
                             forTargetSelector:(SEL)targetSelector
-               byRenamingItToOriginalSelector:(SEL)originalSelector
+                 byRenamingOriginalSelectorTo:(SEL)originalSelector
                                        status:(IMUTLibMethodIntegrationStatus *)status;
 
 @end

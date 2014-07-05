@@ -1,17 +1,15 @@
 #import "IMUTLibEventAggregatorRegistry.h"
 #import "IMUTLibConstants.h"
 #import "IMUTLibModuleRegistry.h"
-#import "IMUTLibEventAggregator.h"
 
 @interface IMUTLibEventAggregatorRegistry ()
 
-- (void)moduleRegistryDidFreeze:(NSNotification *)notification;
+- (void)moduleRegistryWillFreeze:(NSNotification *)notification;
 
 @end;
 
 @implementation IMUTLibEventAggregatorRegistry {
     NSDictionary *_aggregatorBlocks;
-    BOOL _frozen;
 }
 
 SINGLETON
@@ -19,11 +17,10 @@ SINGLETON
 - (instancetype)init {
     if (self = [super init]) {
         _aggregatorBlocks = [NSMutableDictionary dictionary];
-        _frozen = NO;
-        
+
         [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(moduleRegistryDidFreeze:)
-                                                     name:IMUTLibModuleRegistryDidFreezeNotification
+                                                 selector:@selector(moduleRegistryWillFreeze:)
+                                                     name:IMUTLibModuleRegistryWillFreezeNotification
                                                    object:nil];
     }
 
@@ -35,7 +32,7 @@ SINGLETON
 }
 
 - (void)registerEventAggregatorBlock:(IMUTLibEventAggregatorBlock)block forEventsWithNames:(NSSet *)eventNames {
-    if (!_frozen) {
+    if (![IMUTLibModuleRegistry sharedInstance].frozen) {
         for (NSString *eventName in eventNames) {
             [self registerEventAggregatorBlock:block forEventName:eventName];
         };
@@ -44,6 +41,7 @@ SINGLETON
 
 - (void)registerEventAggregatorBlock:(IMUTLibEventAggregatorBlock)block forEventName:(NSString *)eventName {
     NSAssert(![_aggregatorBlocks objectForKey:eventName], @"An aggregator block for events with name \"%@\" has already been registered.", eventName);
+    NSAssert(![IMUTLibModuleRegistry sharedInstance].frozen, @"The registry is already frozen.");
 
     [(NSMutableDictionary *) _aggregatorBlocks setObject:block forKey:eventName];
 }
@@ -51,22 +49,15 @@ SINGLETON
 #pragma mark Private
 
 // Let the modules register their aggregator blocks
-- (void)moduleRegistryDidFreeze:(NSNotification *)notification {
+- (void)moduleRegistryWillFreeze:(NSNotification *)notification {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 
-    for (id moduleInstance in [[IMUTLibModuleRegistry sharedInstance] moduleInstancesWithType:IMUTLibModuleTypeEvented]) {
-        Class curClass = [moduleInstance class];
-        do {
-            if (class_conformsToProtocol(curClass, @protocol(IMUTLibEventAggregator))) {
-                [moduleInstance registerEventAggregatorBlocksInRegistry:self];
-                break;
-            }
-        } while ((curClass = [curClass superclass]));
+    NSSet *eventModules = [[IMUTLibModuleRegistry sharedInstance] moduleInstancesWithType:IMUTLibModuleTypeEvented];
+    for (IMUTLibModule *moduleInstance in eventModules) {
+        [moduleInstance registerEventAggregatorBlocksInRegistry:self];
     }
-    
-    _aggregatorBlocks = [_aggregatorBlocks copy];
 
-    _frozen = YES;
+    _aggregatorBlocks = [_aggregatorBlocks copy];
 }
 
 @end

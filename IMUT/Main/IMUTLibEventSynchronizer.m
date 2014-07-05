@@ -1,14 +1,17 @@
-#import "IMUTLibEventsLogPacket.h"
-#import "IMUTLibLogPacketStreamWriter.h"
-#import "IMUTLibConstants.h"
 #import "IMUTLibEventSynchronizer.h"
+#import "IMUTLibPersistableEntityBag.h"
 #import "IMUTLibTimer.h"
 #import "IMUTLibFunctions.h"
+#import "IMUTLibConstants.h"
+#import "IMUTLibEventsLogPacket.h"
 #import "IMUTLibSessionInitLogPacket.h"
 #import "IMUTLibSyncLogPacket.h"
-#import "IMUTLibMain+Internal.h"
-#import "IMUTLibFinalLogPacket.h"
 #import "IMUTLibUtil.h"
+#import "IMUTLibFinalLogPacket.h"
+#import "IMUTLibSession.h"
+#import "IMUTLibMain+Internal.h"
+#import "IMUTLibPollingModule.h"
+#import "IMUTLibModuleRegistry.h"
 
 @interface IMUTLibEventSynchronizer ()
 
@@ -21,13 +24,14 @@
 @end
 
 @implementation IMUTLibEventSynchronizer {
-    IMUTLibDeltaEntityBag *_lastPersistedDeltaEntityBag;
-    IMUTLibDeltaEntityBag *_currentDeltaEntityBag;
+    IMUTLibPersistableEntityBag *_lastPersistedEntityBag;
+    IMUTLibPersistableEntityBag *_currentEntityBag;
 
     NSTimeInterval _syncTimeInterval;
     IMUTLibTimer *_timer;
 
-    dispatch_queue_t _dispatchQueue;
+    BOOL _didEnqueuInitialEvents;
+    BOOL _isStopping;
 }
 
 SINGLETON
@@ -37,14 +41,23 @@ SINGLETON
         // Persisted event counter
         _eventCount = 0;
 
-        // Delta entity bags
-        _currentDeltaEntityBag = [IMUTLibDeltaEntityBag new];
-        _lastPersistedDeltaEntityBag = [IMUTLibDeltaEntityBag new];
+        // Stop flag
+        _isStopping = NO;
 
-        // Timer
+        // Initial events packet flag
+        _didEnqueuInitialEvents = NO;
+
+        // Delta entity bags
+        _currentEntityBag = [IMUTLibPersistableEntityBag new];
+        _lastPersistedEntityBag = [IMUTLibPersistableEntityBag new];
+
+        // Cache last persistance time
+        _lastPersistedEntityTime = 0;
+
+        // Timing and dispatch
         _syncTimeInterval = 0.25;
         _dispatchQueue = makeDispatchQueue(@"synchronizer", DISPATCH_QUEUE_SERIAL, DISPATCH_QUEUE_PRIORITY_HIGH);
-        _timer = repeatingTimer(_syncTimeInterval * 0.75, self, @selector(run), _dispatchQueue, NO);
+        _timer = makeRepeatingTimer(_syncTimeInterval * 0.75, self, @selector(run), _dispatchQueue, NO);
 
         // Log writer
         _logWriter = [IMUTLibLogPacketStreamWriter writerWithBasename:@"log"
@@ -73,20 +86,16 @@ SINGLETON
     _timer.timeInterval = _syncTimeInterval * 0.75;
 }
 
-- (IMUTLibDeltaEntity *)persistedEntityForKey:(NSString *)key {
-    return [_lastPersistedDeltaEntityBag deltaEntityForKey:key];
+- (IMUTLibPersistableEntity *)persistedEntityForKey:(NSString *)key {
+    return [_lastPersistedEntityBag entityForKey:key];
 }
 
-- (void)enqueueDeltaEntity:(id)deltaEntity {
-    @synchronized (_currentDeltaEntityBag) {
-        [_currentDeltaEntityBag addDeltaEntity:deltaEntity];
-    }
+- (void)enqueueEntity:(IMUTLibPersistableEntity *)entity {
+    [_currentEntityBag addDeltaEntity:entity];
 }
 
-- (void)dequeueDeltaEntityWithKey:(NSString *)key {
-    @synchronized (_currentDeltaEntityBag) {
-        [_currentDeltaEntityBag removeDeltaEntityWithKey:key];
-    }
+- (void)dequeueEntityWithKey:(NSString *)key {
+    [_currentEntityBag removeDeltaEntityWithKey:key];
 }
 
 - (NSTimeInterval)alignTimeInterval:(NSTimeInterval)timeInterval {
@@ -101,52 +110,52 @@ SINGLETON
 // Consolidate log packets
 // Because we align the reference time of each log packet, it can happen that
 // some log packets will have the same reference time, thus _must_ be merged.
-- (void)logWriter:(IMUTLibLogPacketStreamWriter *)logWriter willWriteLogPackets:(NSArray **)packetQueue {
-    if((*packetQueue).count <= 1) {
+- (void)logWriter:(IMUTLibLogPacketStreamWriter *)logWriter willWriteLogPackets:(NSArray **)logPackets {
+    if ((*logPackets).count <= 1) {
         return;
     }
 
-    NSMutableArray *newPacketQueue = [NSMutableArray array];
-    NSObject <IMUTLibLogPacket> *curLogPacket;
+    NSMutableArray *newPackets = [NSMutableArray array];
+    IMUTLibLogPacket *curLogPacket;
     IMUTLibEventsLogPacket *refEventsLogPacket, *curEventsLogPacket;
     NSTimeInterval referenceTime = 0.0;
 
-    for (curLogPacket in *packetQueue) {
+    for (curLogPacket in *logPackets) {
         if ([curLogPacket logPacketType] == IMUTLibLogPacketTypeEvents) {
             curEventsLogPacket = (IMUTLibEventsLogPacket *) curLogPacket;
 
-            if(!refEventsLogPacket || referenceTime != [curEventsLogPacket relativeTime]) {
-                if(refEventsLogPacket) {
-                    [newPacketQueue addObject:refEventsLogPacket];
-                    _eventCount += refEventsLogPacket.deltaEntityBag.count;
+            if (!refEventsLogPacket || referenceTime != [curEventsLogPacket relativeTime]) {
+                if (refEventsLogPacket) {
+                    [newPackets addObject:refEventsLogPacket];
+                    _eventCount += refEventsLogPacket.entityBag.count;
                 }
 
                 refEventsLogPacket = curEventsLogPacket;
                 referenceTime = [curEventsLogPacket relativeTime];
                 continue;
             } else {
-                [refEventsLogPacket mergeIn:curEventsLogPacket];
+                [refEventsLogPacket mergeWith:curEventsLogPacket];
                 continue;
             }
         }
 
-        if(refEventsLogPacket) {
-            [newPacketQueue addObject:refEventsLogPacket];
-            _eventCount += refEventsLogPacket.deltaEntityBag.count;
+        if (refEventsLogPacket) {
+            [newPackets addObject:refEventsLogPacket];
+            _eventCount += refEventsLogPacket.entityBag.count;
             refEventsLogPacket = nil;
         }
 
-        [newPacketQueue addObject:curLogPacket];
+        [newPackets addObject:curLogPacket];
     }
 
-    if(refEventsLogPacket) {
-        [newPacketQueue addObject:refEventsLogPacket];
-        _eventCount += refEventsLogPacket.deltaEntityBag.count;
+    if (refEventsLogPacket) {
+        [newPackets addObject:refEventsLogPacket];
+        _eventCount += refEventsLogPacket.entityBag.count;
     }
 
     // Swap the packet queue
-    *packetQueue = nil; // ARC?
-    *packetQueue = newPacketQueue;
+    *logPackets = nil; // ARC?
+    *logPackets = newPackets;
 }
 
 #pragma mark Private
@@ -154,15 +163,17 @@ SINGLETON
 - (void)clockDidStart:(NSNotification *)notification {
     dispatch_sync(_dispatchQueue, ^{
         _eventCount = 0;
+        _didEnqueuInitialEvents = NO;
+        _isStopping = NO;
 
         // Prepare new logwriter
-        [_logWriter newFile];
+        [_logWriter createFile];
 
         // Enqueue initial packets
         [_logWriter enqueuePacket:[IMUTLibSessionInitLogPacket new]];
         [_logWriter enqueuePacket:[IMUTLibSyncLogPacket new]];
 
-        // Post notification
+        // Post notification and wait until initial packets are available
         [IMUTLibUtil postNotificationName:IMUTLibEventSynchronizerDidStartNotification
                                    object:self
                              onMainThread:NO
@@ -171,14 +182,17 @@ SINGLETON
         // Treat already present entities as initial ones
         [self run];
 
-        // Prepare and start timer
-        //_timer.tolerance = (_syncTimeInterval >= 5.0) ? _syncTimeInterval * 0.1 : 0;
+        // Prepare and start timer, a short leeway may be set when the sync time
+        // interval is rather long
+        _timer.tolerance = (_syncTimeInterval >= 5.0) ? _syncTimeInterval * 0.1 : 0;
         [_timer resume];
     });
 }
 
 - (void)clockDidStop:(NSNotification *)notification {
     dispatch_sync(_dispatchQueue, ^{
+        _isStopping = YES;
+
         // Post notification
         [IMUTLibUtil postNotificationName:IMUTLibEventSynchronizerWillStopNotification
                                    object:self
@@ -186,47 +200,66 @@ SINGLETON
                             waitUntilDone:YES];
 
         // Write out all collected entities and reset timer
-        [_timer fireAndPause];
+        [_timer pause];
+        [self run];
 
         // Enqueue final log packet
         [_logWriter enqueuePacket:[IMUTLibFinalLogPacket new]];
 
         // Stop the log writer
-        [_logWriter closeFileWaitUntilDone:YES];
+        [_logWriter closeFile];
+
+        _isStopping = NO;
     });
 }
 
 // Generate and write out a new events packet
 - (void)run {
-    if (_currentDeltaEntityBag.count) {
-        IMUTLibDeltaEntityBag *enqueueableDeltaEntityBag;
+    if (_currentEntityBag.count) {
+        IMUTLibPersistableEntityBag *enqueueableDeltaEntityBag;
         IMUTLibSession *session = [IMUTLibMain imut].session;
 
-        @synchronized (_currentDeltaEntityBag) {
-            enqueueableDeltaEntityBag = [_currentDeltaEntityBag copy];
-            [_lastPersistedDeltaEntityBag mergeWithBag:_currentDeltaEntityBag];
-            [_currentDeltaEntityBag reset];
+        enqueueableDeltaEntityBag = [_currentEntityBag copy];
+        [_lastPersistedEntityBag mergeWithBag:_currentEntityBag];
+        [_currentEntityBag reset];
+
+        NSTimeInterval relativeTime;
+
+        IMUTLibPersistableEntityMarking marking = 0;
+        if (!_didEnqueuInitialEvents) {
+            _didEnqueuInitialEvents = YES;
+            relativeTime = 0; // Initial time is always 0
+            marking = IMUTLibPersistableEntityMarkInitial;
+        } else {
+            if (_isStopping) {
+                marking = IMUTLibPersistableEntityMarkFinal;
+            }
+
+            relativeTime = [self alignTimeInterval:session.duration];
         }
 
-        NSTimeInterval timeInterval = [self alignTimeInterval:session.sessionDuration];
-        id <IMUTLibLogPacket> logPacket = [IMUTLibEventsLogPacket packetWithDeltaEntityBag:enqueueableDeltaEntityBag
-                                                                    timeIntervalSinceStart:timeInterval];
-
-        if (timeInterval == 0) {
-            [logPacket setAdditionalParameters:@{
-                kIMUTLibInitialEventsPacket : numYES
-            }];
+        if (marking) {
+            for (IMUTLibPersistableEntity *entity in enqueueableDeltaEntityBag.all) {
+                entity.entityMarking = marking;
+            }
         }
+
+        IMUTLibLogPacket *logPacket = [IMUTLibEventsLogPacket packetWithDeltaEntityBag:enqueueableDeltaEntityBag
+                                                                               forTime:relativeTime];
 
         [_logWriter enqueuePacket:logPacket];
+
+        _lastPersistedEntityTime = relativeTime;
     }
+
+    for (IMUTLibPollingModule *module in [IMUTLibModuleRegistry sharedInstance].pollingModuleInstances) {
+        [module poll];
+    };
 }
 
 - (void)clearCache {
-    @synchronized (_currentDeltaEntityBag) {
-        [_currentDeltaEntityBag reset];
-        [_lastPersistedDeltaEntityBag reset];
-    }
+    [_currentEntityBag reset];
+    [_lastPersistedEntityBag reset];
 }
 
 @end

@@ -1,8 +1,16 @@
 #import "IMUTLibMediaFileFinalizer.h"
+#import "IMUTLibFileManager.h"
 #import "IMUTLibConstants.h"
 #import "Macros.h"
 
+@interface IMUTLibMediaFileFinalizer ()
+
+- (instancetype)initWithAssetWriter:(AVAssetWriter *)avAssetWriter;
+
+@end
+
 @implementation IMUTLibMediaFileFinalizer {
+    __strong id _strongSelf;
     AVAssetWriter *_avAssetWriter;
 }
 
@@ -12,28 +20,28 @@ DESIGNATED_INIT
     return [[self alloc] initWithAssetWriter:avAssetWriter];
 }
 
+- (void)finalizeMediaFileWithCompletionBlock:(void (^)(NSString *path))completionBlock {
+    [_avAssetWriter finishWritingWithCompletionHandler:^{
+        NSString *path = [_avAssetWriter.outputURL path];
+        if ([[path pathExtension] isEqualToString:kTempFileExtension]) {
+            path = [IMUTLibFileManager renameTemporaryFileAtPath:path];
+        }
+
+        completionBlock(path);
+
+        _strongSelf = nil;
+    }];
+}
+
+#pragma mark Private
+
 - (instancetype)initWithAssetWriter:(AVAssetWriter *)avAssetWriter {
     if (self = [super init]) {
+        _strongSelf = self;
         _avAssetWriter = avAssetWriter;
     }
 
     return self;
-}
-
-- (void)finalizeMediaFileWithCompletionHandler:(void (^)(void))handler {
-    void (^actualHandler)(void) = handler;
-    if ([[_avAssetWriter.outputURL pathExtension] isEqualToString:IMUTLibTempFileExtension]) {
-        // Must rename file after finalization
-        actualHandler = ^{
-            NSError *error;
-            [[NSFileManager defaultManager] moveItemAtURL:_avAssetWriter.outputURL
-                                                    toURL:[_avAssetWriter.outputURL URLByDeletingPathExtension]
-                                                    error:&error];
-            handler();
-        };
-    }
-
-    [_avAssetWriter finishWritingWithCompletionHandler:actualHandler];
 }
 
 @end

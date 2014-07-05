@@ -1,87 +1,108 @@
-#import "IMUTLibConstants.h"
 #import "IMUTLibSession.h"
+
+#import "Macros.h"
 #import "IMUTLibUtil.h"
-#import "IMUTLibMetaData.h"
+#import "IMUTLibConstants.h"
 #import "IMUTLibFunctions.h"
+#import "IMUTLibMetaData.h"
 
 @interface IMUTLibSession ()
 
-@property(atomic, readwrite, retain) NSDate *cachedStartDate;
-@property(atomic, readwrite, assign) NSTimeInterval cachedDuration;
-
-- (instancetype)initWithTimeSource:(id <IMUTLibTimeSource>)timeSource;
+- (instancetype)initWithTimer:(NSObject <IMUTLibSessionTimer> *)timer;
 
 @end
 
 @implementation IMUTLibSession {
-    NSTimeInterval _cachedDuration;
-    NSDate *_cachedStartDate;
+    BOOL _started;
+    BOOL _stopping;
 }
 
-@dynamic sessionDuration;
-@dynamic startDate;
+@dynamic duration;
+@dynamic timerInfo;
 
 DESIGNATED_INIT
 
-+ (instancetype)sessionWithTimeSource:(id <IMUTLibTimeSource>)timeSource {
-    return [[self alloc] initWithTimeSource:timeSource];
++ (instancetype)sessionWithTimer:(NSObject <IMUTLibSessionTimer> *)timer {
+    return [[self alloc] initWithTimer:timer];
 }
 
-- (NSTimeInterval)sessionDuration {
-    if (self.cachedDuration) {
-        return self.cachedDuration;
+- (NSTimeInterval)duration {
+    return _timer.duration;
+}
+
+- (NSString *)timerInfo {
+    return [[_timer class] description];
+}
+
+- (void)startWithCompletionBlock:(void (^)(BOOL started))completed {
+    @synchronized (self) {
+        if (!_invalid && !_started) {
+            _started = YES;
+
+            [_timer startTickingWithCompletionBlock:^(BOOL started){
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                    @synchronized (self) {
+                        if (!_invalid && started) {
+                            _startDate = [NSDate date];
+
+                            [IMUTLibUtil postNotificationName:IMUTLibClockDidStartNotification
+                                                       object:self
+                                                 onMainThread:NO
+                                                waitUntilDone:YES];
+
+                            completed(YES);
+                        } else {
+                            completed(NO);
+                        }
+                    }
+                });
+            }];
+        } else {
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                completed(NO);
+            });
+        }
     }
-
-    return _timeSource.intervalSinceClockStart;
 }
 
-- (NSDate *)startDate {
-    return self.cachedStartDate;
-}
+- (void)stopWithCompletionBlock:(void (^)(BOOL stopped))completed {
+    @synchronized (self) {
+        if (!_invalid && _started && !_stopping) {
+            _stopping = YES;
 
-- (void)invalidate {
-    _invalid = YES;
-}
+            [_timer stopTickingWithCompletionBlock:^(BOOL stopped){
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                    @synchronized (self) {
+                        [IMUTLibUtil postNotificationName:IMUTLibClockDidStopNotification
+                                                   object:self
+                                             onMainThread:NO
+                                            waitUntilDone:YES];
 
-#pragma mark IMUTLibTimeSourceDelegate
+                        _stopping = NO;
 
-- (void)clockDidStartAtDate:(NSDate *)startDate {
-    self.cachedStartDate = [startDate copy];
+                        completed(YES);
+                    }
+                });
+            }];
 
-    [IMUTLibUtil postNotificationName:IMUTLibClockDidStartNotification
-                               object:self
-                             userInfo:@{
-                                 kSessionId : self.sessionId,
-                                 kTimeSource : self.timeSource,
-                                 kStartDate : _cachedStartDate
-                             }
-                         onMainThread:NO
-                        waitUntilDone:YES];
-}
-
-- (void)clockDidStopAfterTimeInterval:(NSTimeInterval)timeInterval {
-    self.cachedDuration = timeInterval;
-
-    [IMUTLibUtil postNotificationName:IMUTLibClockDidStopNotification
-                               object:self
-                             userInfo:@{
-                                 kSessionId : self.sessionId,
-                                 kTimeSource : self.timeSource,
-                                 kSessionDuration : @(timeInterval)
-                             }
-                         onMainThread:NO
-                        waitUntilDone:YES];
+            _invalid = YES;
+        } else {
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                completed(NO);
+            });
+        }
+    }
 }
 
 #pragma mark Private
 
-- (instancetype)initWithTimeSource:(id <IMUTLibTimeSource>)timeSource {
+- (instancetype)initWithTimer:(NSObject <IMUTLibSessionTimer> *)timer {
     if (self = [super init]) {
         _invalid = NO;
+        _started = NO;
         _sessionId = randomString(10);
-        _timeSource = timeSource;
-        _timeSource.timeSourceDelegate = self;
-        _sortingNumber = [[IMUTLibMetaData sharedInstance] numberAndIncr:kIMUTNextSortingNumber
+        _timer = timer;
+        _sortingNumber = [[IMUTLibMetaData sharedInstance] numberAndIncr:kNextSortingNumber
                                                                  default:@0
                                                                 isDouble:NO];
     }
