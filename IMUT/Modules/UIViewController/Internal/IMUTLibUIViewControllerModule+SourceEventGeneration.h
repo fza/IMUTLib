@@ -12,9 +12,7 @@
 
 - (void)inspectViewController:(UIViewController *)viewController;
 
-- (void)ensureHierarchyAvailable;
-
-- (NSArray *)objectHierarchy;
+- (void)rebuildEntireObjectHierarchy;
 
 - (UIViewController *)frontMostViewController;
 

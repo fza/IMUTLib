@@ -9,6 +9,6 @@ SINGLETON_INTERFACE
 
 - (void)registerObserverClass:(Class <IMUTLibUIViewControllerObserver>)observerClass forUIClass:(Class)uiClass;
 
-- (void)invokeObserverWithObject:(id)object;
+- (BOOL)invokeObserverWithObject:(id)object;
 
 @end

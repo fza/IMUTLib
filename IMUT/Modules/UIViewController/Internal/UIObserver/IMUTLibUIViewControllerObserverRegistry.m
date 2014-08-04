@@ -22,15 +22,16 @@ SINGLETON
     _registry[uiClassName] = observerClass;
 }
 
-- (void)invokeObserverWithObject:(id)object {
-    Class uiClass = [object class];
-    NSString *uiClassName = NSStringFromClass(uiClass);
-    Class <IMUTLibUIViewControllerObserver> observerClass = _registry[uiClassName];
+- (BOOL)invokeObserverWithObject:(id)object {
+    for (NSString *uiClassName in [_registry allKeys]) {
+        if ([object isKindOfClass:NSClassFromString(uiClassName)]) {
+            [_registry[uiClassName] observe:object];
 
-//    NSAssert(observerClass, @"An observer for UI class \"%@\" is not available.", uiClassName);
-    if (observerClass) {
-        [observerClass observe:object];
+            return YES;
+        }
     }
+
+    return NO;
 }
 
 @end

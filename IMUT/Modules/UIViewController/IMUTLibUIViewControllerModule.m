@@ -21,7 +21,7 @@
 }
 
 - (NSSet *)eventsWithInitialState {
-    [self ensureHierarchyAvailable];
+    [self startSourceEventGeneration];
 
     IMUTLibUIViewControllerChangeEvent *sourceEvent = [self sourceEventWithViewController:[self frontMostViewController]];
 

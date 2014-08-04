@@ -2,19 +2,17 @@
 #import "IMUTLibUIViewControllerModuleConstants.h"
 #import "IMUTLibUIViewControllerObserverRegistry.h"
 #import "IMUTLibUtil.h"
+#import "IMUTLibWrappedUIObject.h"
 
-static NSValue *wrappedFrontMostViewController;
+static IMUTLibWrappedUIObject *wrappedFrontMostViewController;
 static int maxViewControllerNestingLevel = 25;
-static BOOL haveHierarchy = NO;
 static BOOL stopped = YES;
 
 @interface IMUTLibUIViewControllerModule (SourceEventGenerationInternal)
 
 - (NSMutableArray *)mutableObjectHierarchy;
 
-- (void)setFrontMostViewControllerWithWrapper:(NSValue *)wrappedViewController;
-
-- (void)rebuildEntireObjectHierarchy;
+- (void)setFrontMostViewControllerWithWrapper:(IMUTLibWrappedUIObject *)wrappedViewController;
 
 - (void)resetObjectHierarchy;
 
@@ -24,7 +22,7 @@ static BOOL stopped = YES;
 
 - (void)removeObjectsAtAndBelowLevel:(NSUInteger)level;
 
-- (void)ensureObservingObject:(id)object;
+- (BOOL)observeUIObject:(id)object;
 
 - (NSString *)childKeyPathForObject:(id)object;
 
@@ -46,7 +44,7 @@ static BOOL stopped = YES;
     return objectHierarchy;
 }
 
-- (void)setFrontMostViewControllerWithWrapper:(NSValue *)wrappedViewController {
+- (void)setFrontMostViewControllerWithWrapper:(IMUTLibWrappedUIObject *)wrappedViewController {
     @synchronized (self) {
         if (!wrappedViewController) {
             wrappedFrontMostViewController = nil;
@@ -54,8 +52,8 @@ static BOOL stopped = YES;
             return;
         }
 
-        __strong UIViewController *oldController = [wrappedFrontMostViewController nonretainedObjectValue];
-        __strong UIViewController *newController = [wrappedViewController nonretainedObjectValue];
+        __strong UIViewController *oldController = wrappedFrontMostViewController.wrappedObject;
+        __strong UIViewController *newController = wrappedViewController.wrappedObject;
 
         if (newController && (!oldController || oldController != newController)) {
             [IMUTLibUtil postNotificationName:IMUTLibFrontMostViewControllerDidChangeNotification
@@ -63,7 +61,7 @@ static BOOL stopped = YES;
                                  onMainThread:YES
                                 waitUntilDone:NO];
 
-            IMUTLogDebug(@"new vc: %@", newController);
+            //IMUTLogDebug(@"new vc: %@", newController);
 
             wrappedFrontMostViewController = wrappedViewController;
 
@@ -72,21 +70,10 @@ static BOOL stopped = YES;
     }
 }
 
-- (void)rebuildEntireObjectHierarchy {
-    @synchronized (self) {
-        [self resetObjectHierarchy];
-
-        // The main UIApplication object is the root object
-        [self inspectObject:[UIApplication sharedApplication]];
-    }
-}
-
 - (void)resetObjectHierarchy {
     @synchronized (self) {
         [self setFrontMostViewControllerWithWrapper:nil];
         [self removeObjectsAtAndBelowLevel:0];
-
-        haveHierarchy = NO;
     }
 }
 
@@ -95,15 +82,13 @@ static BOOL stopped = YES;
         return;
     }
 
-    @synchronized (self) {
-        [self performSelectorOnMainThread:@selector(doInspectObject:) withObject:object waitUntilDone:NO];
-    }
+    [self performSelectorOnMainThread:@selector(doInspectObject:) withObject:object waitUntilDone:NO];
 }
 
 - (void)doInspectObject:(__strong id)object {
     NSMutableArray *objectHierarchy = [self mutableObjectHierarchy];
     __strong id childObject;
-    NSValue *objectWrapper;
+    IMUTLibWrappedUIObject *objectWrapper;
     NSUInteger nestingLevel = objectHierarchy.count;
 
     @synchronized (self) {
@@ -111,42 +96,54 @@ static BOOL stopped = YES;
             NSUInteger index = [self indexForObject:object];
 
             if (index == NSNotFound) {
-                return;
-            }
+                [self removeObjectsAtAndBelowLevel:0];
+                nestingLevel = 0;
 
-            [self removeObjectsAtAndBelowLevel:index];
-            nestingLevel = objectHierarchy.count;
+                object = [UIApplication sharedApplication];
+            } else {
+                [self removeObjectsAtAndBelowLevel:index];
+                nestingLevel = objectHierarchy.count;
+            }
         }
 
         while (true) {
-            [self ensureObservingObject:object];
+            if ([self observeUIObject:object]) {
+                objectWrapper = [IMUTLibWrappedUIObject wrapperWithObject:object];
+                [objectHierarchy addObject:objectWrapper];
+                childObject = [self childObjectForObject:object];
 
-            objectWrapper = [NSValue valueWithNonretainedObject:object];
-            [objectHierarchy addObject:objectWrapper];
-            childObject = [self childObjectForObject:object];
+                //IMUTLogDebug(@"nesting level %lu, UI object class: %@", (unsigned long) nestingLevel, NSStringFromClass([object class]));
 
-            if (!childObject) {
-                if ([object isKindOfClass:[UIViewController class]]) {
-                    [self setFrontMostViewControllerWithWrapper:objectWrapper];
+                if (!childObject) {
+                    if ([object isKindOfClass:[UIViewController class]]) {
+                        [self setFrontMostViewControllerWithWrapper:objectWrapper];
+                    }
+
+                    break;
                 }
 
-                break;
-            }
+                object = childObject;
+                nestingLevel++;
 
-            object = childObject;
-            nestingLevel++;
-
-            if (nestingLevel > maxViewControllerNestingLevel) {
+                if (nestingLevel > maxViewControllerNestingLevel) {
+                    break;
+                }
+            } else {
                 break;
             }
         }
-
-        haveHierarchy = YES;
     }
 }
 
 - (void)removeObjectsAtAndBelowLevel:(NSUInteger)level {
     NSMutableArray *objectHierarchy = [self mutableObjectHierarchy];
+
+    if (level == 0) {
+        [objectHierarchy removeAllObjects];
+
+        return;
+    }
+
     NSUInteger hierarchyNestingLevel = objectHierarchy.count;
 
     if (level > 0 && level <= hierarchyNestingLevel) {
@@ -154,8 +151,8 @@ static BOOL stopped = YES;
     }
 }
 
-- (void)ensureObservingObject:(id)object {
-    [[IMUTLibUIViewControllerObserverRegistry sharedInstance] invokeObserverWithObject:object];
+- (BOOL)observeUIObject:(id)object {
+    return [[IMUTLibUIViewControllerObserverRegistry sharedInstance] invokeObserverWithObject:object];
 }
 
 - (NSString *)childKeyPathForObject:(__strong id)object {
@@ -193,8 +190,8 @@ static BOOL stopped = YES;
 
 - (NSUInteger)indexForObject:(__strong id)searchObject {
     __block NSUInteger foundAtIndex = NSNotFound;
-    [[self mutableObjectHierarchy] enumerateObjectsUsingBlock:^(NSValue *objectWrapper, NSUInteger index, BOOL *stop){
-        __strong id wrappedObject = [objectWrapper nonretainedObjectValue];
+    [[self mutableObjectHierarchy] enumerateObjectsUsingBlock:^(IMUTLibWrappedUIObject *objectWrapper, NSUInteger index, BOOL *stop){
+        __strong id wrappedObject = objectWrapper.wrappedObject;
 
         if (wrappedObject && searchObject == wrappedObject) {
             foundAtIndex = index;
@@ -211,15 +208,19 @@ static BOOL stopped = YES;
 
 - (void)startSourceEventGeneration {
     @synchronized (self) {
-        stopped = NO;
-        [self rebuildEntireObjectHierarchy];
+        if (stopped) {
+            stopped = NO;
+            [self rebuildEntireObjectHierarchy];
+        }
     }
 }
 
 - (void)stopSourceEventGeneration {
     @synchronized (self) {
-        stopped = YES;
-        [self resetObjectHierarchy];
+        if (!stopped) {
+            stopped = YES;
+            [self resetObjectHierarchy];
+        }
     }
 }
 
@@ -231,20 +232,17 @@ static BOOL stopped = YES;
     }
 }
 
-- (void)ensureHierarchyAvailable {
+- (void)rebuildEntireObjectHierarchy {
     @synchronized (self) {
-        if (!haveHierarchy) {
-            [self rebuildEntireObjectHierarchy];
-        }
+        [self resetObjectHierarchy];
+
+        // The main UIApplication object is the root object
+        [self inspectObject:[UIApplication sharedApplication]];
     }
 }
 
-- (NSArray *)objectHierarchy {
-    return [[self mutableObjectHierarchy] copy];
-}
-
 - (UIViewController *)frontMostViewController {
-    return [wrappedFrontMostViewController nonretainedObjectValue];
+    return wrappedFrontMostViewController.wrappedObject;
 }
 
 - (IMUTLibUIViewControllerChangeEvent *)sourceEventWithViewController:(UIViewController *)viewController {

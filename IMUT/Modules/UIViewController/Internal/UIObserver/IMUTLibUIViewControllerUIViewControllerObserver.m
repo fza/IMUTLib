@@ -5,11 +5,11 @@
 + (void)observe:(UINavigationController *)object {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        [[UINavigationController class] __IMUT_integrateMethodFromSourceClass:[self class]
-                                                           withSourceSelector:@selector(dismissViewControllerAnimated:completion:)];
+        [[UIViewController class] __IMUT_integrateMethodFromSourceClass:[self class]
+                                                     withSourceSelector:@selector(dismissViewControllerAnimated:completion:)];
 
-        [[UINavigationController class] __IMUT_integrateMethodFromSourceClass:[self class]
-                                                           withSourceSelector:@selector(presentViewController:animated:completion:)];
+        [[UIViewController class] __IMUT_integrateMethodFromSourceClass:[self class]
+                                                     withSourceSelector:@selector(presentViewController:animated:completion:)];
     });
 }
 
@@ -24,7 +24,9 @@
                 [module inspectViewController:(UIViewController *) (id) self];
             }
 
-            completion();
+            if (completion) {
+                completion();
+            }
         }];
     }
 }
@@ -44,7 +46,9 @@
                 [module inspectViewController:(UIViewController *) (id) self];
             }
 
-            completion();
+            if (completion) {
+                completion();
+            }
         }];
     }
 }
