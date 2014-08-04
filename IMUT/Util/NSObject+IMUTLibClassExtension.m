@@ -59,8 +59,8 @@ void integrateClassMethod(Class targetClass, Class sourceClass, SEL targetSelect
     IMP sourceMethodImplementation = [sourceClass instanceMethodForSelector:sourceSelector];
     const char *sourceMethodEncoding = method_getTypeEncoding(sourceMethod);
 
-    IMUTLogDebugC(@"source class/selector: %@ / %@", sourceClass, NSStringFromSelector(sourceSelector));
-    IMUTLogDebugC(@" --> target class/selector: %@ / %@", targetClass, NSStringFromSelector(targetSelector));
+    //IMUTLogDebugC(@"source class/selector: %@ / %@", sourceClass, NSStringFromSelector(sourceSelector));
+    //IMUTLogDebugC(@" --> target class/selector: %@ / %@", targetClass, NSStringFromSelector(targetSelector));
 
     if (class_respondsToSelector(targetClass, targetSelector)) {
         Method targetMethod = class_getInstanceMethod(targetClass, targetSelector);
@@ -84,7 +84,7 @@ void integrateClassMethod(Class targetClass, Class sourceClass, SEL targetSelect
                 NSStringFromSelector(originalSelector)
             );
 
-        IMUTLogDebugC(@" --> target class/original selector: %@ / %@", targetClass, NSStringFromSelector(targetSelector));
+        //IMUTLogDebugC(@" --> target class/original selector: %@ / %@", targetClass, NSStringFromSelector(targetSelector));
 
         class_addMethod(targetClass, originalSelector, targetMethodImplementation, targetMethodEncoding);
         class_replaceMethod(targetClass, targetSelector, sourceMethodImplementation, sourceMethodEncoding);

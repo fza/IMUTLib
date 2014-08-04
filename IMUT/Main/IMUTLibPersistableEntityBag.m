@@ -24,6 +24,7 @@
 }
 
 - (NSArray *)all {
+    // TODO: Check this
     return [_store allValues];
 }
 

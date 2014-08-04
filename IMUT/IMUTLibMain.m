@@ -73,10 +73,6 @@ static IMUTLibMain *sharedInstance;
     [[IMUTLibModuleRegistry sharedInstance] registerModuleWithClass:moduleClass];
 }
 
-+ (void)registerSessionTimerWithClass:(Class)sessionTimerClass {
-    [[IMUTLibModuleRegistry sharedInstance] registerSessionTimerWithClass:sessionTimerClass];
-}
-
 - (void)start {
     // Forward to internal implementation
     [self doStart];

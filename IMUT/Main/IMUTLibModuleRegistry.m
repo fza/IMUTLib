@@ -218,7 +218,9 @@ SINGLETON
 
     IMUTLogMain(@"Unable to enable module \"%@\".", moduleName);
 
-    return NO;
+    return YES;
+
+    //return NO;
 }
 
 - (void)freeze {
