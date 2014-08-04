@@ -35,6 +35,7 @@
 		18E0D136C26653484CDFEB35 /* IMUTLibScreenRenderer+UIViewObservation.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0D0347D37BAA4447A5598 /* IMUTLibScreenRenderer+UIViewObservation.h */; };
 		18E0D14483926D61B7688A16 /* IMUTLibOrientationModuleConstants.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0D6461A160D79A8372E3C /* IMUTLibOrientationModuleConstants.m */; };
 		18E0D166EFBEEFDA29F17B87 /* IMUTLibBacklightChangeEvent.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0D2E68E0489836A2FC3CC /* IMUTLibBacklightChangeEvent.h */; };
+		18E0D185A6B9516CE34164E8 /* IMUTLibUIViewControllerUIApplicationObserver.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0DAA97D9758196B955F65 /* IMUTLibUIViewControllerUIApplicationObserver.m */; };
 		18E0D1DA3113903DD5287ADD /* IMUTLibEventSynchronizer.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0D46E4D189086846B914F /* IMUTLibEventSynchronizer.m */; };
 		18E0D24CFFCE40E0004D8F7F /* IMUTLibUIViewControllerObserverRegistry.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0D75E32CCD863101D0546 /* IMUTLibUIViewControllerObserverRegistry.h */; };
 		18E0D251C1CD7BC8A277DC5A /* IMUTLibScreenRenderer+UIViewObservation.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0D5D01E83CF7DAFDED8E6 /* IMUTLibScreenRenderer+UIViewObservation.m */; };
@@ -62,13 +63,15 @@
 		18E0D47D8A6BBC27D6834079 /* IMUTLibDeviceOrientationChangeEvent.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0DA93D936346358E1502A /* IMUTLibDeviceOrientationChangeEvent.m */; };
 		18E0D483FF9B164ED2CA43CF /* IMUTLibScreenRecorderStopEvent.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0DBA7713738C1C1EA92C9 /* IMUTLibScreenRecorderStopEvent.h */; };
 		18E0D4A2DE925487C0ED893F /* IMUTLibScreenModuleDelegate.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0D28B543DEC206703E445 /* IMUTLibScreenModuleDelegate.h */; };
+		18E0D4A79B9E277B044E0FCD /* IMUTLibWrappedUIObject.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0DB2DEB5B9C7567A4A999 /* IMUTLibWrappedUIObject.m */; };
 		18E0D4B4F7ACE5375EAE3AD4 /* IMUTLibBatteryLevelChangeEvent.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0D8A24A4103FF29B41B29 /* IMUTLibBatteryLevelChangeEvent.m */; };
 		18E0D4D9CD06D10FDF92BC65 /* IMUTLibLocationChangeEvent.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0D340E10A35CB65EE5E10 /* IMUTLibLocationChangeEvent.m */; };
 		18E0D4E2EA558B9418313653 /* IMUTLibMediaSourceDelegate.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0DB6889FC5997806CE919 /* IMUTLibMediaSourceDelegate.h */; };
 		18E0D4E37E5200375F34BCB0 /* IMUTLibMediaSource.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0DD08AB7DAEB794F0AF5F /* IMUTLibMediaSource.m */; };
 		18E0D4FE56E01A3022646ACC /* IMUTLibMetaData.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0D32F78E8B5116C0017BF /* IMUTLibMetaData.m */; };
+		18E0D5190697854F577ABAD1 /* IMUTLibUIViewControllerUIWindowObserver.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0DF69027957686408AFE6 /* IMUTLibUIViewControllerUIWindowObserver.m */; };
 		18E0D57DA27435438492DBB5 /* IMUTLibFrontCameraRecorderStartEvent.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0D455CBEB524C964C538B /* IMUTLibFrontCameraRecorderStartEvent.m */; };
-		18E0D5C0D7364343073976FF /* IMUTLibPersistableEntity.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0D39E86F3C8D02D36EB31 /* IMUTLibPersistableEntity.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		18E0D5C0D7364343073976FF /* IMUTLibPersistableEntity.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0D39E86F3C8D02D36EB31 /* IMUTLibPersistableEntity.h */; };
 		18E0D5CC29FF05A2A368BA2F /* IMUTLibPollingModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0DBB7ED238A0DC767B48B /* IMUTLibPollingModule.m */; };
 		18E0D5F753A7F921DABA0347 /* IMUTLibEventSynchronizer.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0DF0C05D1DD63E1E269C0 /* IMUTLibEventSynchronizer.h */; };
 		18E0D60385C8D36A7C76F2BF /* IMUTLibScreenRenderer+UIViewObservation.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0D5D01E83CF7DAFDED8E6 /* IMUTLibScreenRenderer+UIViewObservation.m */; };
@@ -78,7 +81,7 @@
 		18E0D69C40F06B1790AEBF4E /* IMUTLibPollingVideoSource.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0DA34DF3B662A5D09C51F /* IMUTLibPollingVideoSource.m */; };
 		18E0D6DE32DAD91140EFD53C /* IMUTLibScreenModuleSessionTimer.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0DE1D7BBE46BBCB339391 /* IMUTLibScreenModuleSessionTimer.h */; };
 		18E0D6E3B7DDA6742EF9C754 /* IMUTLibFrontCameraModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0DDDF6364DFF8C660A252 /* IMUTLibFrontCameraModule.m */; };
-		18E0D71C40D4262A04426151 /* IMUTLibSourceEvent.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0DF2FB91006F3E7D6745C /* IMUTLibSourceEvent.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		18E0D71C40D4262A04426151 /* IMUTLibSourceEvent.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0DF2FB91006F3E7D6745C /* IMUTLibSourceEvent.h */; };
 		18E0D74128B75F6C6A3EBA76 /* IMUTLibMediaSource.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0DD08AB7DAEB794F0AF5F /* IMUTLibMediaSource.m */; };
 		18E0D761AFC525E32B3FA6B0 /* IMUTLibUIViewControllerUITabBarControllerObserver.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0DDE6E501597B5449693B /* IMUTLibUIViewControllerUITabBarControllerObserver.m */; };
 		18E0D79580095EFC5AE0B909 /* IMUTLibDeviceOrientationChangeEvent.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0DA93D936346358E1502A /* IMUTLibDeviceOrientationChangeEvent.m */; };
@@ -113,7 +116,7 @@
 		18E0DA8C9DC791B8F2A59C54 /* IMUTLibOrientationModuleConstants.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0D5F54BC2F50AE277395E /* IMUTLibOrientationModuleConstants.h */; };
 		18E0DAD876F3B32AFFC86386 /* IMUTLibPollingVideoSource.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0DA34DF3B662A5D09C51F /* IMUTLibPollingVideoSource.m */; };
 		18E0DB04B035F94CE16F7544 /* IMUTLibFunctions.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0DF3F5BFFB092F01D88E5 /* IMUTLibFunctions.m */; };
-		18E0DB090EE436FF78F5F7AA /* IMUTLibPollingModule.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0DF8CEE746ACCF88B0EF5 /* IMUTLibPollingModule.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		18E0DB090EE436FF78F5F7AA /* IMUTLibPollingModule.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0DF8CEE746ACCF88B0EF5 /* IMUTLibPollingModule.h */; };
 		18E0DB310DA3393233E0DE0D /* IMUTLibFunctions.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0DF3F5BFFB092F01D88E5 /* IMUTLibFunctions.m */; };
 		18E0DB375FD674A613974E39 /* IMUTLibUIViewControllerUITabBarControllerObserver.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0DDE6E501597B5449693B /* IMUTLibUIViewControllerUITabBarControllerObserver.m */; };
 		18E0DB426893939D6BF29762 /* IMUTLibLocationModuleConstants.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0DE781AC8061CD1E8EA4D /* IMUTLibLocationModuleConstants.m */; };
@@ -145,9 +148,9 @@
 		18E0DEF1E318620E35F6CAB0 /* IMUTLibPersistableEntity+Internal.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0D2DE67DE3AC94E4F5C71 /* IMUTLibPersistableEntity+Internal.h */; };
 		18E0DEF23CBDA2226125F313 /* IMUTLibUIViewControllerObserverRegistry.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0D656EF45937BE6D2D7BC /* IMUTLibUIViewControllerObserverRegistry.m */; };
 		18E0DF0C1106E4410933EA7F /* IMUTLibHeadingChangeEvent.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0D31AD4CD9264AA86E341 /* IMUTLibHeadingChangeEvent.h */; };
-		18E0DF2F36AF3BCB24C63F92 /* IMUTLibSourceEventCollection.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0DE63689340703EFBF4C0 /* IMUTLibSourceEventCollection.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		18E0DF2F36AF3BCB24C63F92 /* IMUTLibSourceEventCollection.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0DE63689340703EFBF4C0 /* IMUTLibSourceEventCollection.h */; };
 		18E0DF3B8D0CF4BDA001EACD /* IMUTLibBatteryLevelModuleConstants.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0D506C974A49A57726000 /* IMUTLibBatteryLevelModuleConstants.m */; };
-		18E0DF5C22331774D17CD779 /* IMUTLibSessionTimer.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0D17929E1882F8C87045D /* IMUTLibSessionTimer.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		18E0DF5C22331774D17CD779 /* IMUTLibSessionTimer.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0D17929E1882F8C87045D /* IMUTLibSessionTimer.h */; };
 		18E0DF8CAB29B05B2B60477C /* IMUTLibBacklightModuleConstants.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0D864F26C2C5BDFA706CF /* IMUTLibBacklightModuleConstants.m */; };
 		18E0DFBB6BD53A6E0237207C /* IMUTLibPersistableEntity.m in Sources */ = {isa = PBXBuildFile; fileRef = 18E0DDDE190AAF6DC6D7BFD5 /* IMUTLibPersistableEntity.m */; };
 		18E0DFE9370FC6A40E924C61 /* IMUTLibUIViewControllerUIViewControllerObserver.h in Headers */ = {isa = PBXBuildFile; fileRef = 18E0D639987BA3839C75DDFB /* IMUTLibUIViewControllerUIViewControllerObserver.h */; };
@@ -226,13 +229,13 @@
 		262DFA381959727100A5AEE4 /* IMUTLibConstants.h in Headers */ = {isa = PBXBuildFile; fileRef = 262DF9301959713700A5AEE4 /* IMUTLibConstants.h */; };
 		262DFA3A1959727100A5AEE4 /* IMUTLibDefaultSessionTimer.h in Headers */ = {isa = PBXBuildFile; fileRef = 262DF9321959713700A5AEE4 /* IMUTLibDefaultSessionTimer.h */; };
 		262DFA3E1959727100A5AEE4 /* IMUTLibPersistableEntityBag.h in Headers */ = {isa = PBXBuildFile; fileRef = 262DF9361959713700A5AEE4 /* IMUTLibPersistableEntityBag.h */; };
-		262DFA401959727100A5AEE4 /* IMUTLibEventAggregatorRegistry.h in Headers */ = {isa = PBXBuildFile; fileRef = 262DF9381959713700A5AEE4 /* IMUTLibEventAggregatorRegistry.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		262DFA401959727100A5AEE4 /* IMUTLibEventAggregatorRegistry.h in Headers */ = {isa = PBXBuildFile; fileRef = 262DF9381959713700A5AEE4 /* IMUTLibEventAggregatorRegistry.h */; };
 		262DFA471959727100A5AEE4 /* IMUTLibMain+Internal.h in Headers */ = {isa = PBXBuildFile; fileRef = 262DF93F1959713700A5AEE4 /* IMUTLibMain+Internal.h */; };
 		262DFA491959727200A5AEE4 /* IMUTLibModuleRegistry.h in Headers */ = {isa = PBXBuildFile; fileRef = 262DF9411959713700A5AEE4 /* IMUTLibModuleRegistry.h */; };
 		262DFA4B1959727200A5AEE4 /* IMUTLibSession.h in Headers */ = {isa = PBXBuildFile; fileRef = 262DF9431959713700A5AEE4 /* IMUTLibSession.h */; };
 		262DFA511959727200A5AEE4 /* IMUTLibMediaFileFinalizer.h in Headers */ = {isa = PBXBuildFile; fileRef = 262DF94A1959713700A5AEE4 /* IMUTLibMediaFileFinalizer.h */; };
 		262DFA571959727200A5AEE4 /* IMUTLibMediaWriter.h in Headers */ = {isa = PBXBuildFile; fileRef = 262DF9501959713700A5AEE4 /* IMUTLibMediaWriter.h */; };
-		262DFA591959727200A5AEE4 /* IMUTLibModule.h in Headers */ = {isa = PBXBuildFile; fileRef = 262DF97B1959713700A5AEE4 /* IMUTLibModule.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		262DFA591959727200A5AEE4 /* IMUTLibModule.h in Headers */ = {isa = PBXBuildFile; fileRef = 262DF97B1959713700A5AEE4 /* IMUTLibModule.h */; };
 		262DFA691959727300A5AEE4 /* IMUTLibBacklightModule.h in Headers */ = {isa = PBXBuildFile; fileRef = 262DF9601959713700A5AEE4 /* IMUTLibBacklightModule.h */; };
 		262DFA6D1959727300A5AEE4 /* IMUTLibBatteryLevelModule.h in Headers */ = {isa = PBXBuildFile; fileRef = 262DF9651959713700A5AEE4 /* IMUTLibBatteryLevelModule.h */; };
 		262DFA7D1959727400A5AEE4 /* IMUTLibHeadingModule.h in Headers */ = {isa = PBXBuildFile; fileRef = 262DF9791959713700A5AEE4 /* IMUTLibHeadingModule.h */; };
@@ -249,6 +252,7 @@
 
 /* Begin PBXFileReference section */
 		18E0D0347D37BAA4447A5598 /* IMUTLibScreenRenderer+UIViewObservation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "IMUTLibScreenRenderer+UIViewObservation.h"; sourceTree = "<group>"; };
+		18E0D06217F71F01C0CF2AA9 /* IMUTLibUIViewControllerUIWindowObserver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IMUTLibUIViewControllerUIWindowObserver.h; sourceTree = "<group>"; };
 		18E0D0B1ABD114215B29B2FD /* IMUTLibBatteryLevelModuleConstants.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IMUTLibBatteryLevelModuleConstants.h; sourceTree = "<group>"; };
 		18E0D0D558DA731FC07824C4 /* IMUTLibUIViewControllerUIViewControllerObserver.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = IMUTLibUIViewControllerUIViewControllerObserver.m; sourceTree = "<group>"; };
 		18E0D0F321DED5622DB37D44 /* IMUTLibBatteryLevelChangeEvent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IMUTLibBatteryLevelChangeEvent.h; sourceTree = "<group>"; };
@@ -287,6 +291,7 @@
 		18E0D75E32CCD863101D0546 /* IMUTLibUIViewControllerObserverRegistry.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IMUTLibUIViewControllerObserverRegistry.h; sourceTree = "<group>"; };
 		18E0D79DBA4FAD590BBC150A /* IMUTLibBatteryStateConstants.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = IMUTLibBatteryStateConstants.m; sourceTree = "<group>"; };
 		18E0D7B689FE7D53D058A25B /* IMUTLibPersistableEntity+Internal.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "IMUTLibPersistableEntity+Internal.m"; sourceTree = "<group>"; };
+		18E0D7EAD51CD64D553FD135 /* IMUTLibWrappedUIObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IMUTLibWrappedUIObject.h; sourceTree = "<group>"; };
 		18E0D813D53102994B1662C7 /* IMUTLibBacklightChangeEvent.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = IMUTLibBacklightChangeEvent.m; sourceTree = "<group>"; };
 		18E0D853EBD8AE6719621E9A /* IMUTLibLogPacketStreamEncoder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IMUTLibLogPacketStreamEncoder.h; sourceTree = "<group>"; };
 		18E0D864F26C2C5BDFA706CF /* IMUTLibBacklightModuleConstants.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = IMUTLibBacklightModuleConstants.m; sourceTree = "<group>"; };
@@ -308,7 +313,9 @@
 		18E0DA698F5B30DBC6B06502 /* IMUTLibUIViewControllerModuleConstants.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = IMUTLibUIViewControllerModuleConstants.m; sourceTree = "<group>"; };
 		18E0DA7C6998ADC303FF2E20 /* IMUTLibScreenRenderer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IMUTLibScreenRenderer.h; sourceTree = "<group>"; };
 		18E0DA93D936346358E1502A /* IMUTLibDeviceOrientationChangeEvent.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = IMUTLibDeviceOrientationChangeEvent.m; sourceTree = "<group>"; };
+		18E0DAA97D9758196B955F65 /* IMUTLibUIViewControllerUIApplicationObserver.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = IMUTLibUIViewControllerUIApplicationObserver.m; sourceTree = "<group>"; };
 		18E0DAFF1184A4E9CBC9CFD9 /* IMUTLibBatteryStateConstants.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IMUTLibBatteryStateConstants.h; sourceTree = "<group>"; };
+		18E0DB2DEB5B9C7567A4A999 /* IMUTLibWrappedUIObject.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = IMUTLibWrappedUIObject.m; sourceTree = "<group>"; };
 		18E0DB6889FC5997806CE919 /* IMUTLibMediaSourceDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IMUTLibMediaSourceDelegate.h; sourceTree = "<group>"; };
 		18E0DB74E72E9A39873FA169 /* IMUTLibUIViewControllerUINavigationControllerObserver.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = IMUTLibUIViewControllerUINavigationControllerObserver.m; sourceTree = "<group>"; };
 		18E0DB85891EDC59997FE8A3 /* IMUTLibLocationModuleConstants.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IMUTLibLocationModuleConstants.h; sourceTree = "<group>"; };
@@ -319,6 +326,7 @@
 		18E0DC1BC639258A93A4C29C /* IMUTLibScreenRecorderStopEvent.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = IMUTLibScreenRecorderStopEvent.m; sourceTree = "<group>"; };
 		18E0DC31745E631F2EFD3EBA /* IMUTLibUIViewControllerChangeEvent.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = IMUTLibUIViewControllerChangeEvent.m; sourceTree = "<group>"; };
 		18E0DC3D890387A6F04C4EA7 /* IMUTLibUIViewControllerModule+SourceEventGeneration.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "IMUTLibUIViewControllerModule+SourceEventGeneration.h"; sourceTree = "<group>"; };
+		18E0DCF60014534390D52176 /* IMUTLibUIViewControllerUIApplicationObserver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IMUTLibUIViewControllerUIApplicationObserver.h; sourceTree = "<group>"; };
 		18E0DCF9A4CDCE699083E8F8 /* IMUTLibScreenRecorderStartEvent.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = IMUTLibScreenRecorderStartEvent.m; sourceTree = "<group>"; };
 		18E0DD08AB7DAEB794F0AF5F /* IMUTLibMediaSource.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = IMUTLibMediaSource.m; sourceTree = "<group>"; };
 		18E0DD28500FF7E0D7067F90 /* NSObject+IMUTLibClassExtension.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSObject+IMUTLibClassExtension.m"; sourceTree = "<group>"; };
@@ -339,6 +347,7 @@
 		18E0DF0C05D1DD63E1E269C0 /* IMUTLibEventSynchronizer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IMUTLibEventSynchronizer.h; sourceTree = "<group>"; };
 		18E0DF2FB91006F3E7D6745C /* IMUTLibSourceEvent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IMUTLibSourceEvent.h; sourceTree = "<group>"; };
 		18E0DF3F5BFFB092F01D88E5 /* IMUTLibFunctions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = IMUTLibFunctions.m; sourceTree = "<group>"; };
+		18E0DF69027957686408AFE6 /* IMUTLibUIViewControllerUIWindowObserver.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = IMUTLibUIViewControllerUIWindowObserver.m; sourceTree = "<group>"; };
 		18E0DF85FBC06FAA7119E46F /* IMUTLibBacklightModuleConstants.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IMUTLibBacklightModuleConstants.h; sourceTree = "<group>"; };
 		18E0DF8CEE746ACCF88B0EF5 /* IMUTLibPollingModule.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IMUTLibPollingModule.h; sourceTree = "<group>"; };
 		262DF8C819596FF500A5AEE4 /* libIMUT.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libIMUT.a; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -458,6 +467,8 @@
 				18E0D63677F9A0B4D21DE654 /* IMUTLibUIViewControllerModuleConstants.h */,
 				18E0D8CB8CE784A6691174FD /* IMUTLibUIViewControllerChangeEvent.h */,
 				18E0DAE95E6BE12CCB025FAF /* UIObserver */,
+				18E0DB2DEB5B9C7567A4A999 /* IMUTLibWrappedUIObject.m */,
+				18E0D7EAD51CD64D553FD135 /* IMUTLibWrappedUIObject.h */,
 			);
 			path = Internal;
 			sourceTree = "<group>";
@@ -545,9 +556,9 @@
 			isa = PBXGroup;
 			children = (
 				18E0DE13C158F5041346EF29 /* IMUTLibDeviceCapturingSource.h */,
+				18E0D9BC3FFD385EA2CD3ABC /* IMUTLibDeviceCapturingSource.m */,
 				18E0D9FEF0BBAA6EB254C623 /* IMUTLibPollingVideoSource.h */,
 				18E0DA34DF3B662A5D09C51F /* IMUTLibPollingVideoSource.m */,
-				18E0D9BC3FFD385EA2CD3ABC /* IMUTLibDeviceCapturingSource.m */,
 				18E0DC011F6241ADCB03C46C /* IMUTLibMediaSource.h */,
 				18E0DD08AB7DAEB794F0AF5F /* IMUTLibMediaSource.m */,
 				18E0DB6889FC5997806CE919 /* IMUTLibMediaSourceDelegate.h */,
@@ -567,6 +578,10 @@
 				18E0D75E32CCD863101D0546 /* IMUTLibUIViewControllerObserverRegistry.h */,
 				18E0DB74E72E9A39873FA169 /* IMUTLibUIViewControllerUINavigationControllerObserver.m */,
 				18E0D0D558DA731FC07824C4 /* IMUTLibUIViewControllerUIViewControllerObserver.m */,
+				18E0DAA97D9758196B955F65 /* IMUTLibUIViewControllerUIApplicationObserver.m */,
+				18E0DCF60014534390D52176 /* IMUTLibUIViewControllerUIApplicationObserver.h */,
+				18E0DF69027957686408AFE6 /* IMUTLibUIViewControllerUIWindowObserver.m */,
+				18E0D06217F71F01C0CF2AA9 /* IMUTLibUIViewControllerUIWindowObserver.h */,
 			);
 			path = UIObserver;
 			sourceTree = "<group>";
@@ -873,14 +888,16 @@
 			files = (
 				26C9806219668F89007AA570 /* IMUT.h in Headers */,
 				262DFA271959727100A5AEE4 /* IMUTLibMain.h in Headers */,
-				262DFA591959727200A5AEE4 /* IMUTLibModule.h in Headers */,
-				262DFA401959727100A5AEE4 /* IMUTLibEventAggregatorRegistry.h in Headers */,
-				18E0DB090EE436FF78F5F7AA /* IMUTLibPollingModule.h in Headers */,
 				262DFA291959727100A5AEE4 /* IMUTLibJSONStreamEncoder.h in Headers */,
-				18E0DF2F36AF3BCB24C63F92 /* IMUTLibSourceEventCollection.h in Headers */,
 				262DFA2B1959727100A5AEE4 /* IMUTLibLogPacketStreamWriter.h in Headers */,
-				18E0DF5C22331774D17CD779 /* IMUTLibSessionTimer.h in Headers */,
 				262DFA2D1959727100A5AEE4 /* IMUTLibLogPacket.h in Headers */,
+				262DFA401959727100A5AEE4 /* IMUTLibEventAggregatorRegistry.h in Headers */,
+				262DFA591959727200A5AEE4 /* IMUTLibModule.h in Headers */,
+				18E0DB090EE436FF78F5F7AA /* IMUTLibPollingModule.h in Headers */,
+				18E0DF2F36AF3BCB24C63F92 /* IMUTLibSourceEventCollection.h in Headers */,
+				18E0DF5C22331774D17CD779 /* IMUTLibSessionTimer.h in Headers */,
+				18E0D71C40D4262A04426151 /* IMUTLibSourceEvent.h in Headers */,
+				18E0D5C0D7364343073976FF /* IMUTLibPersistableEntity.h in Headers */,
 				262DFA2F1959727100A5AEE4 /* IMUTLibEventsLogPacket.h in Headers */,
 				262DFA321959727100A5AEE4 /* IMUTLibSessionInitLogPacket.h in Headers */,
 				262DFA341959727100A5AEE4 /* IMUTLibSyncLogPacket.h in Headers */,
@@ -924,8 +941,6 @@
 				18E0DDB41B81CC1C1276D1A3 /* IMUTLibLocationChangeEvent.h in Headers */,
 				18E0DA8C9DC791B8F2A59C54 /* IMUTLibOrientationModuleConstants.h in Headers */,
 				18E0D8661246C17A4B993990 /* IMUTLibDeviceOrientationChangeEvent.h in Headers */,
-				18E0D71C40D4262A04426151 /* IMUTLibSourceEvent.h in Headers */,
-				18E0D5C0D7364343073976FF /* IMUTLibPersistableEntity.h in Headers */,
 				18E0D01D491BA2166FC4B85A /* IMUTLibScreenRecorderStartEvent.h in Headers */,
 				18E0D483FF9B164ED2CA43CF /* IMUTLibScreenRecorderStopEvent.h in Headers */,
 				18E0D7A6F4B04510BEA30BD8 /* IMUTLibScreenRenderer.h in Headers */,
@@ -1038,7 +1053,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Sets the target folders and the final framework product.\nBUILD_TARGET=\"IMUT Bundle\"\nFMK_NAME=\"IMUT\"\nFMK_VERSION=\"A\"\n\n# Install dir will be the final output to the framework.\n# The following line create it in the root folder of the current project.\nPRODUCT_DIR=${SRCROOT}/Products/${FMK_NAME}\nINSTALL_DIR=${PRODUCT_DIR}/${FMK_NAME}.framework\n\n# Working dir will be deleted after the framework creation.\nWRK_DIR=build\nDEVICE_DIR=${WRK_DIR}/Release-iphoneos/${FMK_NAME}.framework\nSIMULATOR_DIR=${WRK_DIR}/Release-iphonesimulator/${FMK_NAME}.framework\n\n# Building both architectures.\nxcodebuild -configuration \"Release\" -target \"${BUILD_TARGET}\" -sdk iphoneos\nxcodebuild -configuration \"Release\" -target \"${BUILD_TARGET}\" -sdk iphonesimulator\n\n# Cleaning the oldest.\nif [ -d \"${INSTALL_DIR}\" ]\nthen\nrm -rf \"${INSTALL_DIR}\"\nfi\n\n# Creates and renews the final product folder.\nmkdir -p \"${INSTALL_DIR}\"\nmkdir -p \"${INSTALL_DIR}/Versions\"\nmkdir -p \"${INSTALL_DIR}/Versions/${FMK_VERSION}\"\nmkdir -p \"${INSTALL_DIR}/Versions/${FMK_VERSION}/Resources\"\nmkdir -p \"${INSTALL_DIR}/Versions/${FMK_VERSION}/Headers\"\n\n// Copies additional files\ncp -R \"${SRCROOT}/Additional Files/\" \"${PRODUCT_DIR}\"\n\n# Creates the internal links.\n# It MUST uses relative path, otherwise will not work when the folder is copied/moved.\nln -s \"${FMK_VERSION}\" \"${INSTALL_DIR}/Versions/Current\"\nln -s \"Versions/Current/Headers\" \"${INSTALL_DIR}/Headers\"\nln -s \"Versions/Current/Resources\" \"${INSTALL_DIR}/Resources\"\nln -s \"Versions/Current/${FMK_NAME}\" \"${INSTALL_DIR}/${FMK_NAME}\"\n\n# Copies the headers and resources files to the final product folder.\ncp -R \"${DEVICE_DIR}/Headers/\" \"${INSTALL_DIR}/Versions/${FMK_VERSION}/Headers/\"\ncp -R \"${DEVICE_DIR}/\" \"${INSTALL_DIR}/Versions/${FMK_VERSION}/Resources/\"\n\n# Removes the binary and header from the resources folder.\nrm -r \"${INSTALL_DIR}/Versions/${FMK_VERSION}/Resources/Headers\" \"${INSTALL_DIR}/Versions/${FMK_VERSION}/Resources/${FMK_NAME}\"\n\n# Uses the Lipo Tool to merge both binary files (i386 + armv6/armv7) into one Universal final product.\nlipo -create \"${DEVICE_DIR}/${FMK_NAME}\" \"${SIMULATOR_DIR}/${FMK_NAME}\" -output \"${INSTALL_DIR}/Versions/${FMK_VERSION}/${FMK_NAME}\"\n\nrm -r \"${WRK_DIR}\"";
+			shellScript = "# Sets the target folders and the final framework product.\nBUILD_TARGET=\"IMUT Bundle\"\nFMK_NAME=\"IMUT\"\nFMK_VERSION=\"A\"\n\n# Install dir will be the final output to the framework.\n# The following line create it in the root folder of the current project.\nPRODUCT_DIR=${SRCROOT}/Products/${FMK_NAME}\nINSTALL_DIR=${PRODUCT_DIR}/${FMK_NAME}.framework\n\n# Working dir will be deleted after the framework creation.\nWRK_DIR=build\nDEVICE_DIR=${WRK_DIR}/Release-iphoneos/${FMK_NAME}.framework\nSIMULATOR_DIR=${WRK_DIR}/Release-iphonesimulator/${FMK_NAME}.framework\n\n# Building both architectures.\nxcodebuild -configuration \"Release\" -target \"${BUILD_TARGET}\" -sdk iphoneos\nxcodebuild -configuration \"Release\" -target \"${BUILD_TARGET}\" -sdk iphonesimulator\n\n# Cleaning the oldest.\nif [ -d \"${INSTALL_DIR}\" ]\nthen\nrm -rf \"${INSTALL_DIR}\"\nfi\n\n# Creates and renews the final product folder.\nmkdir -p \"${INSTALL_DIR}\"\nmkdir -p \"${INSTALL_DIR}/Versions\"\nmkdir -p \"${INSTALL_DIR}/Versions/${FMK_VERSION}\"\nmkdir -p \"${INSTALL_DIR}/Versions/${FMK_VERSION}/Resources\"\nmkdir -p \"${INSTALL_DIR}/Versions/${FMK_VERSION}/Headers\"\n\n// Copies additional files\n// cp -R \"${SRCROOT}/Additional Files/\" \"${PRODUCT_DIR}\"\n\n# Creates the internal links.\n# It MUST uses relative path, otherwise will not work when the folder is copied/moved.\nln -s \"${FMK_VERSION}\" \"${INSTALL_DIR}/Versions/Current\"\nln -s \"Versions/Current/Headers\" \"${INSTALL_DIR}/Headers\"\nln -s \"Versions/Current/Resources\" \"${INSTALL_DIR}/Resources\"\nln -s \"Versions/Current/${FMK_NAME}\" \"${INSTALL_DIR}/${FMK_NAME}\"\n\n# Copies the headers and resources files to the final product folder.\ncp -R \"${DEVICE_DIR}/Headers/\" \"${INSTALL_DIR}/Versions/${FMK_VERSION}/Headers/\"\ncp -R \"${DEVICE_DIR}/\" \"${INSTALL_DIR}/Versions/${FMK_VERSION}/Resources/\"\n\n# Removes the binary and header from the resources folder.\nrm -r \"${INSTALL_DIR}/Versions/${FMK_VERSION}/Resources/Headers\" \"${INSTALL_DIR}/Versions/${FMK_VERSION}/Resources/${FMK_NAME}\"\n\n# Uses the Lipo Tool to merge both binary files (i386 + armv6/armv7) into one Universal final product.\nlipo -create \"${DEVICE_DIR}/${FMK_NAME}\" \"${SIMULATOR_DIR}/${FMK_NAME}\" -output \"${INSTALL_DIR}/Versions/${FMK_VERSION}/${FMK_NAME}\"\n\nrm -r \"${WRK_DIR}\"";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -1117,6 +1132,9 @@
 				18E0DE45432C09D0E0D196B3 /* IMUTLibFrontCameraModuleConstants.m in Sources */,
 				18E0D57DA27435438492DBB5 /* IMUTLibFrontCameraRecorderStartEvent.m in Sources */,
 				18E0D0B8533F09BDAF1DF345 /* IMUTLibFrontCameraRecorderStopEvent.m in Sources */,
+				18E0D185A6B9516CE34164E8 /* IMUTLibUIViewControllerUIApplicationObserver.m in Sources */,
+				18E0D5190697854F577ABAD1 /* IMUTLibUIViewControllerUIWindowObserver.m in Sources */,
+				18E0D4A79B9E277B044E0FCD /* IMUTLibWrappedUIObject.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

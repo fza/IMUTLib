@@ -4,15 +4,27 @@
 <dict>
 	<key>autostart</key>
 	<true/>
+	<key>synchronizationInterval</key>
+	<real>0.25</real>
+	<key>keepUnfinishedFiles</key>
+	<false/>
 	<key>modules</key>
 	<dict>
-		<key>screenRecorder</key>
+		<key>backlight</key>
 		<true/>
-		<key>location</key>
+		<key>batteryLevel</key>
+		<true/>
+		<key>batteryState</key>
+		<true/>
+		<key>frontCamera</key>
 		<true/>
 		<key>heading</key>
 		<true/>
-		<key>orientation</key>
+		<key>location</key>
+		<true/>
+		<key>screenRecorder</key>
+		<true/>
+		<key>uiViewController</key>
 		<true/>
 	</dict>
 </dict>
