@@ -24,7 +24,7 @@
 
 - (NSDictionary *)parameters {
     return @{
-        kIMUTLibScreenModuleRecorderStopEventParamDuration : formatCMTime(_sampleTime),
+//        kIMUTLibScreenModuleRecorderStopEventParamDuration : formatCMTime(_sampleTime),
         kIMUTLibScreenModuleRecorderStopEventParamFilename : _filename
     };
 }

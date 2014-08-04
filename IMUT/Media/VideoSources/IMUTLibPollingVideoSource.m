@@ -293,7 +293,7 @@ CVPixelBufferRef VideoFrameGetPixelBuffer(VideoFrameBufferRef buffer) {
         _currentFrameRate = 0;
         _encodingQueueLock = OS_SPINLOCK_INIT;
 
-        _canAskRendererForTargetDispatchQueue = [renderer respondsToSelector:@selector(videoSource:failedProcessingFrameAtTime:reason:)];
+        _canAskRendererForTargetDispatchQueue = [renderer respondsToSelector:@selector(videoSource:getTargetDispatchQueue:)];
         _canInformRendererProcessingFailed = [renderer respondsToSelector:@selector(videoSource:failedProcessingFrameAtTime:reason:)];
         _canInformRendererFrameProcessed = [renderer respondsToSelector:@selector(videoSource:didProcessFrameAtTime:)];
         _canInformRendererFramesDropped = [renderer respondsToSelector:@selector(videoSource:droppedFrames:since:)];
