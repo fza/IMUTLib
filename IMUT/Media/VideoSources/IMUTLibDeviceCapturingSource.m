@@ -22,10 +22,6 @@
 @end
 
 @implementation IMUTLibDeviceCapturingSource {
-    // Flag indicating if the post-initialization had been done after rendering the
-    // first frame
-    BOOL _processedFirstFrame;
-
     // Frame rate in frames/sec and in fractions of a second
     unsigned int _targetFrameRate;
 
@@ -34,12 +30,14 @@
     AVCaptureDeviceInput *_deviceInput;
     AVCaptureVideoDataOutput *_videoDataOutput;
 
+    AVAssetWriterInputPixelBufferAdaptor *_pixelBufferAdaptor;
+
     // Cache information about dropped frames
 //    unsigned long _framesDropped;
 //    CMTime _framesDroppedReferenceTime;
 
     // Cached frame time information
-//    CMTime _previousFrameTime;
+    CMTime _previousFrameTime;
 
     dispatch_queue_t _processingRenderingQueue;
 
@@ -82,22 +80,32 @@
 #pragma mark AVCaptureVideoDataOutputSampleBufferDelegate protocol
 
 - (void)captureOutput:(AVCaptureOutput *)captureOutput didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
-    if (!_processedFirstFrame) {
-        _processedFirstFrame = YES;
-        if ([connection isVideoOrientationSupported]) {
-            [connection setVideoOrientation:AVCaptureVideoOrientationPortrait];
-        }
-    } else {
-        CMTime frameTime = CMClockGetTime(_captureSession.masterClock);
-        [_writerInput appendSampleBuffer:sampleBuffer];
-        [self _calculateFrameRateWithCurrentFrameTime:frameTime];
+    CVImageBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    CMTime frameTime = CMTimebaseGetTimeWithTimeScale(
+        _currentTimebase,
+        (int32_t) _targetFrameRate,
+        kCMTimeRoundingMethod_RoundHalfAwayFromZero
+    );
 
-        _lastSampleTime = frameTime;
+    if (frameTime.value <= _previousFrameTime.value) {
+        return;
     }
+
+    BOOL accepted = NO;
+    if (_writerInput.readyForMoreMediaData) {
+        accepted = [_pixelBufferAdaptor appendPixelBuffer:pixelBuffer
+                                     withPresentationTime:frameTime];
+    }
+
+    [self _calculateFrameRateWithCurrentFrameTime:frameTime];
+    _previousFrameTime = _currentSampleTime = _lastSampleTime = frameTime;
+
+    //IMUTLogDebug(@"%lld, %d", frameTime.value, accepted);
 }
 
 - (void)captureOutput:(AVCaptureOutput *)captureOutput didDropSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
-    // noop
+    //CMTime frameTime = CMClockGetTime(_captureSession.masterClock);
+    //IMUTLogDebug(@"dropped sample at time: %lld", frameTime.value);
 }
 
 #pragma mark Private
@@ -117,11 +125,6 @@
                                                  selector:@selector(captureSessionError:)
                                                      name:AVCaptureSessionRuntimeErrorNotification
                                                    object:nil];
-
-//        [[NSNotificationCenter defaultCenter] addObserver:self
-//                                                 selector:@selector(captureSessionDidStartRunning:)
-//                                                     name:AVCaptureSessionDidStartRunningNotification
-//                                                   object:nil];
     }
 
     return self;
@@ -161,7 +164,6 @@
     NSDictionary *bufferAttributes = [_delegate bufferAttributesUsingDefaults:[self _defaultBufferAttributes]];
 
     // Initialize process vars, which haven't been initialized before
-    _processedFirstFrame = NO;
     _previousSecondTimestamps = [NSMutableArray array];
 
     // Make the processing rendering queue
@@ -204,10 +206,32 @@
     _writerInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeVideo outputSettings:videoSettings];
     _writerInput.expectsMediaDataInRealTime = YES;
 
+    _pixelBufferAdaptor = [AVAssetWriterInputPixelBufferAdaptor assetWriterInputPixelBufferAdaptorWithAssetWriterInput:_writerInput
+                                                                                           sourcePixelBufferAttributes:bufferAttributes];
+
+    // Setup the master timebase, which is backed by `mach_absolute_time`, the kernel's processor clock
+    OSStatus timebaseCreateStatus = CMTimebaseCreateWithMasterClock(
+        kCFAllocatorDefault,
+        CMClockGetHostTimeClock(),
+        &_currentTimebase
+    );
+
+    NSAssert(timebaseCreateStatus == 0, @"Could not create timebase.");
+
+    // Initialize the timebase
+    CMTime now = CMTimeMake(0, 1000 * 1000);
+    CMTimebaseSetTime(_currentTimebase, now);
+    CMTimebaseSetRate(_currentTimebase, 1.0);
+
     // Inform the writer
     [_writer mediaSourceWillBeginProducingSamples:self];
 
     [_captureSession startRunning];
+
+    AVCaptureConnection *connection = [_videoDataOutput connectionWithMediaType:AVMediaTypeVideo];
+    if (connection && [connection isVideoOrientationSupported]) {
+        [connection setVideoOrientation:AVCaptureVideoOrientationPortrait];
+    }
 }
 
 - (void)_teardownCapturingSession {
@@ -220,12 +244,12 @@
         dispatch_group_leave(dispatchGroup);
     });
 
-    [_writerInput markAsFinished];
-
     // Remove capture session
     [_captureSession removeOutput:_videoDataOutput];
     [_captureSession removeInput:_deviceInput];
     _captureSession = nil;
+
+    [_writerInput markAsFinished];
 
     // Remove video data output connector
     _videoDataOutput = nil;
@@ -241,20 +265,15 @@
     // Relinquish all process variables
     _writerInput = nil;
     _processingRenderingQueue = nil;
-    _processedFirstFrame = NO;
     _previousSecondTimestamps = nil;
 
     [_writer mediaSourceDidStopProducingSamples:self lastSampleTime:_lastSampleTime];
 
-    dispatch_group_wait(dispatchGroup, dispatch_time(DISPATCH_TIME_NOW, (uint64_t) (5.0 * NSEC_PER_SEC)));
+    dispatch_group_wait(dispatchGroup, dispatch_time(DISPATCH_TIME_NOW, (uint64_t) (10.0 * NSEC_PER_SEC)));
 }
 
 - (void)captureSessionError:(NSNotification *)notification {
-    NSAssert(false, @"Capture session error occured.");
+    //NSAssert(false, @"Capture session error occured.");
 }
-
-//- (void)captureSessionDidStartRunning:(NSNotification *)notification {
-//
-//}
 
 @end

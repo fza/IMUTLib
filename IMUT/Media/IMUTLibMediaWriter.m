@@ -252,9 +252,9 @@ static NSMutableDictionary *writers;
 //        if ([[IMUTLibMain imut] isTerminated]) {
 //            dispatch_sync(_finalizationDispatchQueue, finalizationBlock);
 //        } else {
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+//        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
             [finalizer finalizeMediaFileWithCompletionBlock:completionBlock];
-        });
+//        });
 //        }
 
         _assetWriter = nil;

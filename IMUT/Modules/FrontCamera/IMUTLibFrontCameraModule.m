@@ -36,7 +36,7 @@
 
             if (!error) {
                 _videoSource = [IMUTLibDeviceCapturingSource captureSourceWithInputDevice:captureDeviceInput
-                                                                          targetFrameRate:35];
+                                                                          targetFrameRate:30];
                 _videoSource.delegate = self;
 
                 _mediaWriter = [IMUTLibMediaWriter writerWithBasename:@"frontcamera"];
@@ -55,13 +55,14 @@
     AVAuthorizationStatus authStatus = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
 
     __block BOOL ret = NO;
-    if (!authStatus) {
+    if (authStatus != AVAuthorizationStatusAuthorized) {
         dispatch_group_t dispatchGroup = dispatch_group_create();
         dispatch_group_enter(dispatchGroup);
 
         [AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo completionHandler:^(BOOL granted){
             if (granted) {
                 ret = [self.videoSource startCapturing];
+                dispatch_group_leave(dispatchGroup);
             }
         }];
 
