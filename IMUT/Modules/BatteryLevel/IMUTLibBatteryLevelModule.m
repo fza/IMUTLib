@@ -44,7 +44,7 @@
 
             if (fabs(deltaBatteryLevel) >= [_config[kIMUTLibBatteryLevelModuleConfigMinDeltaValue] floatValue]) {
                 NSDictionary *deltaParams = @{
-                    kIMUTLibBatteryLevelChangeEventParamLevel : [NSNumber numberWithDouble:round(deltaBatteryLevel * 100.0) / 100.0]
+                    kIMUTLibBatteryLevelChangeEventParamLevel : @(round(deltaBatteryLevel * 100.0) / 100.0)
                 };
 
                 *deltaEntity = [IMUTLibPersistableEntity entityWithParameters:deltaParams sourceEvent:sourceEvent];

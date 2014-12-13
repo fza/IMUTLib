@@ -5,21 +5,24 @@
 #import "IMUTLibMediaWriter.h"
 
 typedef NS_ENUM(NSUInteger, IMUTLibMediaSourceType) {
-    IMUTLibMediaSourceTypeAudio = 1,
+    IMUTLibMediaSourceTypeAudio = 1, // not used at the moment
     IMUTLibMediaSourceTypeVideo = 2
 };
 
-// A base class that acts as a decorator for `AVAssetWriterInput` with its
-// highly variant configurations.
+// A base class that acts as a decorator for `AVAssetWriterInput` with its variant configurations
 @interface IMUTLibMediaSource : NSObject {
 @protected
     BOOL _capturing;
     Float64 _currentFrameRate;
     CMTimebaseRef _currentTimebase;
+
     NSTimeInterval _currentRecordingDuration;
     CMTime _currentSampleTime;
     NSTimeInterval _lastRecordingDuration;
     CMTime _lastSampleTime;
+
+    NSMutableArray *_previousSecTimestamps;
+
     AVAssetWriterInput *_writerInput;
     IMUTLibMediaSourceType _mediaSourceType;
     __weak IMUTLibMediaWriter *_writer;
@@ -28,8 +31,7 @@ typedef NS_ENUM(NSUInteger, IMUTLibMediaSourceType) {
 // YES if rendering and encoding is in progress
 @property(nonatomic, readonly, getter=isCapturing) BOOL capturing;
 
-// The live calculated framerate. Only available with video
-// sources
+// The current calculated framerate
 @property(nonatomic, readonly, assign) double currentFrameRate;
 
 // The current timebase
@@ -41,7 +43,7 @@ typedef NS_ENUM(NSUInteger, IMUTLibMediaSourceType) {
 // The duration of the current recording in seconds
 @property(nonatomic, readonly, assign) NSTimeInterval currentRecordingDuration;
 
-// The current session's duration in samples
+// The current session's duration in sample time
 @property(nonatomic, readonly, assign) CMTime currentSampleTime;
 
 // Start date of the previous rendering session
@@ -50,7 +52,7 @@ typedef NS_ENUM(NSUInteger, IMUTLibMediaSourceType) {
 // Duration of the previous rendering session in seconds
 @property(nonatomic, readonly, assign) NSTimeInterval lastRecordingDuration;
 
-// The previous session's duration in samples
+// The previous session's duration in sample time
 @property(nonatomic, readonly, assign) CMTime lastSampleTime;
 
 // The AVAssetWriterInput instance that all sample data is passed
@@ -71,7 +73,7 @@ typedef NS_ENUM(NSUInteger, IMUTLibMediaSourceType) {
 - (BOOL)startCapturing;
 
 // This will wait until the current sample has been produced, then stop the
-// capturing timer. It waits until all samples have been encoded, then
+// capturing timer. It waits until all samples have been encoded/consumed, then
 // stops the encoding timer. It then tells the writer to finalize. This
 // method shall not block.
 - (void)stopCapturing;

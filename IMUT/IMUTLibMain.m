@@ -7,7 +7,7 @@
 // Still a prototype, thus major version is 0
 unsigned int const IMUT_MAJOR_VERSION = 0;
 unsigned int const IMUT_MINOR_VERSION = 1;
-unsigned int const IMUT_PATCH_VERSION = 0;
+unsigned int const IMUT_PATCH_VERSION = 1;
 
 static IMUTLibMain *sharedInstance;
 

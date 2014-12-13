@@ -59,32 +59,27 @@ void integrateClassMethod(Class targetClass, Class sourceClass, SEL targetSelect
     IMP sourceMethodImplementation = [sourceClass instanceMethodForSelector:sourceSelector];
     const char *sourceMethodEncoding = method_getTypeEncoding(sourceMethod);
 
-    //IMUTLogDebugC(@"source class/selector: %@ / %@", sourceClass, NSStringFromSelector(sourceSelector));
-    //IMUTLogDebugC(@" --> target class/selector: %@ / %@", targetClass, NSStringFromSelector(targetSelector));
-
     if (class_respondsToSelector(targetClass, targetSelector)) {
         Method targetMethod = class_getInstanceMethod(targetClass, targetSelector);
         IMP targetMethodImplementation = [targetClass instanceMethodForSelector:targetSelector];
         const char *targetMethodEncoding = method_getTypeEncoding(targetMethod);
 
         NSCAssert(strcmp(sourceMethodEncoding, targetMethodEncoding) == 0,
-                @"Unable to replace selector \"%@\" in class \"%@\" as the method signatures differ.",
-                NSStringFromSelector(targetSelector),
-                NSStringFromClass(targetClass)
-            );
+            @"Unable to replace selector \"%@\" in class \"%@\" as the method signatures differ.",
+            NSStringFromSelector(targetSelector),
+            NSStringFromClass(targetClass)
+        );
 
         if (!originalSelector) {
             originalSelector = NSSelectorFromString([@"original_" stringByAppendingString:NSStringFromSelector(targetSelector)]);
         }
 
         NSCAssert(!class_respondsToSelector(targetClass, originalSelector),
-                @"Unable to replace selector \"%@\" in class \"%@\" as the future original selector \"%@\" is already present.",
-                NSStringFromSelector(targetSelector),
-                NSStringFromClass(targetClass),
-                NSStringFromSelector(originalSelector)
-            );
-
-        //IMUTLogDebugC(@" --> target class/original selector: %@ / %@", targetClass, NSStringFromSelector(targetSelector));
+            @"Unable to replace selector \"%@\" in class \"%@\" as the future original selector \"%@\" is already present.",
+            NSStringFromSelector(targetSelector),
+            NSStringFromClass(targetClass),
+            NSStringFromSelector(originalSelector)
+        );
 
         class_addMethod(targetClass, originalSelector, targetMethodImplementation, targetMethodEncoding);
         class_replaceMethod(targetClass, targetSelector, sourceMethodImplementation, sourceMethodEncoding);

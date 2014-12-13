@@ -29,8 +29,8 @@
 
 - (NSDictionary *)parameters {
     return @{
-        kIMUTLibLocationChangeEventParamLongitude : [NSNumber numberWithDouble:(double) ((int) (_location.coordinate.longitude * 1000.0)) / 1000.0],
-        kIMUTLibLocationChangeEventParamLatitude : [NSNumber numberWithDouble:(double) ((int) (_location.coordinate.latitude * 1000.0)) / 1000.0],
+        kIMUTLibLocationChangeEventParamLongitude : @((double) ((int) (_location.coordinate.longitude * 100000.0)) / 100000.0),
+        kIMUTLibLocationChangeEventParamLatitude : @((double) ((int) (_location.coordinate.latitude * 100000.0)) / 100000.0),
     };
 }
 

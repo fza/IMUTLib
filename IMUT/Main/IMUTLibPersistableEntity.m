@@ -43,6 +43,8 @@ DESIGNATED_INIT
     } else if (_shouldMergeWithSourceEventParams) {
         NSMutableDictionary *params = [[_sourceEvent parameters] mutableCopy];
         [params addEntriesFromDictionary:_parameters];
+
+        return params;
     }
 
     return _parameters;

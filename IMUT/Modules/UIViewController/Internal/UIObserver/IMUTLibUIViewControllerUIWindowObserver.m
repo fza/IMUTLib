@@ -25,8 +25,6 @@ SINGLETON
 }
 
 - (void)keyWindowDidChange:(NSNotification *)notification {
-    //IMUTLogDebug(@"key window did change!");
-
     IMUTLibUIViewControllerModule *module = (IMUTLibUIViewControllerModule *) [[IMUTLibModuleRegistry sharedInstance] moduleInstanceWithName:kIMUTLibUIViewControllerModule];
 
     [module rebuildEntireObjectHierarchy];

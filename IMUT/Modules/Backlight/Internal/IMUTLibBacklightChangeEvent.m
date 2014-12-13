@@ -27,7 +27,7 @@
 
 - (NSDictionary *)parameters {
     return @{
-        kIMUTLibBacklightChangeEventParamVal : [NSNumber numberWithDouble:round(_brightness * 100.0) / 100.0]
+        kIMUTLibBacklightChangeEventParamVal : @(round(_brightness * 100.0) / 100.0)
     };
 }
 

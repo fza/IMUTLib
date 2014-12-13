@@ -68,7 +68,7 @@
 
             if (distance >= [_config[kIMUTLibLocationModuleConfigMinDistanceMeters] doubleValue]) {
                 NSDictionary *deltaParams = @{
-                    kIMUTLibLocationChangeEventParamDistance : [NSNumber numberWithDouble:(round(distance * 100.0) / 100.0)]
+                    kIMUTLibLocationChangeEventParamDistance : @(round(distance * 100.0) / 100.0)
                 };
 
                 *deltaEntity = [IMUTLibPersistableEntity entityWithParameters:deltaParams sourceEvent:sourceEvent];

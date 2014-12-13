@@ -57,7 +57,7 @@
 
             if (fabs(deltaBrightness) >= [_config[kIMUTLibBacklightModuleConfigMinDeltaValue] doubleValue]) {
                 NSDictionary *deltaParams = @{
-                    kIMUTLibBacklightChangeEventParamVal : [NSNumber numberWithDouble:round(deltaBrightness * 100.0) / 100.0]
+                    kIMUTLibBacklightChangeEventParamVal : @(round(deltaBrightness * 100.0) / 100.0)
                 };
 
                 *deltaEntity = [IMUTLibPersistableEntity entityWithParameters:deltaParams sourceEvent:sourceEvent];

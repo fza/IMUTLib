@@ -25,10 +25,6 @@ static NSString *arrayClose = @"\n]";
 - (instancetype)init {
     if (self = [super init]) {
         _fileExtension = @"json";
-        _began = NO;
-        _closed = NO;
-        _encodedFirstObject = NO;
-
         _lock = OS_SPINLOCK_INIT;
     }
 
@@ -36,6 +32,9 @@ static NSString *arrayClose = @"\n]";
 }
 
 - (void)beginEncoding {
+    _began = NO;
+    _closed = NO;
+    _encodedFirstObject = NO;
 }
 
 - (void)encodeObject:(id)object {

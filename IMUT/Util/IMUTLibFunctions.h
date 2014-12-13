@@ -13,10 +13,6 @@ dispatch_queue_t makeDispatchQueue(NSString *name, dispatch_queue_attr_t attr, l
 // queue.
 dispatch_queue_t makeDispatchQueueWithTargetQueue(NSString *name, dispatch_queue_attr_t attr, dispatch_queue_t targetQueue);
 
-// Wait for a dispatch queue until it becomes idle
-// Warning: Do not use when the application is about to terminate!d
-BOOL waitForDispatchQueueToBecomeIdle(dispatch_queue_t queue, dispatch_time_t timeout);
-
 // ########
 // Misc. functions -->
 

@@ -85,7 +85,7 @@ static NSCache *sequenceNumberCache;
                                                                                                extension]];
             } while ([fileManager fileExistsAtPath:testPath]);
 
-            [sequenceNumberCache setObject:[NSNumber numberWithInteger:currentSequenceNumber] forKey:filename];
+            [sequenceNumberCache setObject:@(currentSequenceNumber) forKey:filename];
 
             return testPath;
         }

@@ -1,6 +1,6 @@
 #import <Foundation/Foundation.h>
 
-#import "IMUTLibPollingVideoSource.h"
+#import "IMUTLibScreenVideoSource.h"
 
 @protocol IMUTLibScreenRendererDelegate;
 

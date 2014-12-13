@@ -31,7 +31,7 @@
 
 - (NSDictionary *)parameters {
     return @{
-        kIMUTLibBatteryLevelChangeEventParamLevel : [NSNumber numberWithDouble:round(_batteryLevel * 10.0) / 10.0]
+        kIMUTLibBatteryLevelChangeEventParamLevel : @(round(_batteryLevel * 10.0) / 10.0)
     };
 }
 

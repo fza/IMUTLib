@@ -2,7 +2,7 @@
 
 #import "IMUTLibModule.h"
 #import "IMUTLibScreenModuleDelegate.h"
-#import "IMUTLibPollingVideoSource.h"
+#import "IMUTLibScreenVideoSource.h"
 #import "IMUTLibDeviceCapturingSource.h"
 
 @interface IMUTLibFrontCameraModule : IMUTLibModule

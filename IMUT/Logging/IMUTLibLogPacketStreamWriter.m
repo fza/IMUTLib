@@ -113,7 +113,6 @@ DESIGNATED_INIT
         // Setup the packet encoder
         _encoder = encoder;
         _encoder.delegate = self;
-        [_encoder beginEncoding];
 
         // Setup timer to encode and write log packets
         _dispatchQueue = makeDispatchQueue(@"log_writer", DISPATCH_QUEUE_SERIAL, DISPATCH_QUEUE_PRIORITY_LOW);
@@ -163,6 +162,8 @@ DESIGNATED_INIT
     }
 
     [_currentFileHandle seekToEndOfFile];
+
+    [_encoder beginEncoding];
 }
 
 + (NSObject <IMUTLibLogPacketStreamEncoder> *)encoderForType:(IMUTLibLogPacketEncoderType)encoderType {

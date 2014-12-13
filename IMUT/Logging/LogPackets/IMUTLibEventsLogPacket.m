@@ -39,12 +39,12 @@ DESIGNATED_INIT
         });
 
         if (entity.parameters) {
-            [event setObject:entity.parameters forKey:kParamParams];
+            event[kParamParams] = entity.parameters;
         }
 
         NSString *entityMarking = [entity entityMarkingString];
         if (entityMarking) {
-            [event setObject:entityMarking forKey:kEntityMarking];
+            event[kEntityMarking] = entityMarking;
         }
 
         [events addObject:event];

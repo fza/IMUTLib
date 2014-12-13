@@ -70,7 +70,7 @@
 
             if (fabs(deltaMagneticHeading) > [_config[kIMUTLibHeadingModuleConfigMinDeltaHeadingDegrees] doubleValue]) {
                 NSDictionary *deltaParams = @{
-                    kIMUTLibHeadingChangeEventParamHeading : [NSNumber numberWithDouble:deltaMagneticHeading]
+                    kIMUTLibHeadingChangeEventParamHeading : @(deltaMagneticHeading)
                 };
 
                 *deltaEntity = [IMUTLibPersistableEntity entityWithParameters:deltaParams

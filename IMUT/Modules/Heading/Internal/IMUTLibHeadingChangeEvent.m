@@ -27,7 +27,7 @@
 
 - (NSDictionary *)parameters {
     return @{
-        kIMUTLibHeadingChangeEventParamHeading : [NSNumber numberWithDouble:(double) ((int) (_heading.magneticHeading * 100.0)) / 100.0]
+        kIMUTLibHeadingChangeEventParamHeading : @((double) ((int) (_heading.magneticHeading * 100.0)) / 100.0)
     };
 }
 

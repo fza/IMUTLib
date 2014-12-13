@@ -13,6 +13,7 @@
 - (BOOL)startRecording;
 
 - (void)stopRecording;
+
 @end
 
 @implementation IMUTLibScreenModule {
@@ -24,11 +25,11 @@
         IMUTLibScreenRenderer *screenRenderer = [IMUTLibScreenRenderer rendererWithConfig:_config];
         screenRenderer.delegate = self;
 
-        _videoSource = [IMUTLibPollingVideoSource videoSourceWithRenderer:screenRenderer targetFrameRate:35];
+        _videoSource = [IMUTLibScreenVideoSource videoSourceWithRenderer:screenRenderer targetFrameRate:60];
 
         _mediaWriter = [IMUTLibMediaWriter writerWithBasename:@"screen"];
         _mediaWriter.delegate = self;
-        [_mediaWriter addMediaSource:self.videoSource];
+        [_mediaWriter addMediaSource:_videoSource];
     }
 
     return self;
@@ -67,12 +68,10 @@
     return IMUTLibPersistableEntityTypeOther;
 }
 
-// Only used if this module doesn't act as time source
 - (void)startWithSession:(IMUTLibSession *)session {
     [self startRecording];
 }
 
-// Only used if this module doesn't act as time source
 - (void)stopWithSession:(IMUTLibSession *)session {
     [self stopRecording];
 }

@@ -79,7 +79,7 @@ SINGLETON
 }
 
 - (NSSet *)moduleInstancesWithType:(NSUInteger)moduleType {
-    NSSet *set = _enabledInstancesByType[[NSNumber numberWithLong:moduleType]];
+    NSSet *set = _enabledInstancesByType[@(moduleType)];
 
     return set ?: [NSSet set];
 }

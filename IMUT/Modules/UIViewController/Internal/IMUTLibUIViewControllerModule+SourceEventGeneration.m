@@ -61,8 +61,6 @@ static BOOL stopped = YES;
                                  onMainThread:YES
                                 waitUntilDone:NO];
 
-            //IMUTLogDebug(@"new vc: %@", newController);
-
             wrappedFrontMostViewController = wrappedViewController;
 
             [[IMUTLibSourceEventCollection sharedInstance] addSourceEvent:[self sourceEventWithViewController:newController]];
@@ -111,8 +109,6 @@ static BOOL stopped = YES;
                 objectWrapper = [IMUTLibWrappedUIObject wrapperWithObject:object];
                 [objectHierarchy addObject:objectWrapper];
                 childObject = [self childObjectForObject:object];
-
-                //IMUTLogDebug(@"nesting level %lu, UI object class: %@", (unsigned long) nestingLevel, NSStringFromClass([object class]));
 
                 if (!childObject) {
                     if ([object isKindOfClass:[UIViewController class]]) {

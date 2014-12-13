@@ -24,20 +24,6 @@ dispatch_queue_t makeDispatchQueueWithTargetQueue(NSString *name, dispatch_queue
     return queue;
 }
 
-// The basic idea is to enqueue another block and to wait until it is executed,
-// which is then interpreted as the queue being idle. Note that it is of course
-// possible that there may be blocks inserted into the queue after we placed the
-// marker block! TODO May be more efficient to use dispatch barriers?!
-BOOL waitForDispatchQueueToBecomeIdle(dispatch_queue_t queue, dispatch_time_t timeout) {
-    dispatch_group_t group = dispatch_group_create();
-    dispatch_group_enter(group);
-    dispatch_async(queue, ^{
-        dispatch_group_leave(group);
-    });
-
-    return dispatch_group_wait(group, timeout) == 0;
-}
-
 BOOL classConformsToProtocol(Protocol *theProtocol, Class theClass) {
     do {
         if (class_conformsToProtocol(theClass, theProtocol)) {

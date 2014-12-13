@@ -12,9 +12,6 @@
 #import "IMUTLibFileManager.h"
 #import "IMUTLibTimer.h"
 
-#define CHECK_SESSION_STOP_INTERVAL 0.5
-#define CHECK_SESSION_STOP_MAX_TIMES 10 // wait 5 seconds until crash
-
 static BOOL started;
 
 static OSSpinLock notificationLock;

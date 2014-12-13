@@ -1,5 +1,5 @@
-#import <UIKit/UIKit.h>
 #import "IMUTLibDeviceCapturingSource.h"
+#import "IMUTLibMediaSource+FrameRateCalculation.h"
 #import "IMUTLibFunctions.h"
 #import "Macros.h"
 
@@ -11,13 +11,9 @@
 
 - (NSMutableDictionary *)_defaultBufferAttributes;
 
-- (void)_calculateFrameRateWithCurrentFrameTime:(CMTime)time;
-
 - (void)_setupCapturingSession;
 
 - (void)_teardownCapturingSession;
-
-- (void)captureSessionError:(NSNotification *)notification;
 
 @end
 
@@ -32,19 +28,10 @@
 
     AVAssetWriterInputPixelBufferAdaptor *_pixelBufferAdaptor;
 
-    // Cache information about dropped frames
-//    unsigned long _framesDropped;
-//    CMTime _framesDroppedReferenceTime;
-
     // Cached frame time information
     CMTime _previousFrameTime;
 
     dispatch_queue_t _processingRenderingQueue;
-
-    // Array that contains the timing information of the frames rendered during
-    // the previous second. Used to calculate the live framerate.
-    NSMutableArray *_previousSecondTimestamps;
-
 }
 
 + (instancetype)captureSourceWithInputDevice:(AVCaptureDeviceInput *)inputDevice targetFrameRate:(unsigned int)targetFrameRate {
@@ -91,21 +78,12 @@
         return;
     }
 
-    BOOL accepted = NO;
     if (_writerInput.readyForMoreMediaData) {
-        accepted = [_pixelBufferAdaptor appendPixelBuffer:pixelBuffer
-                                     withPresentationTime:frameTime];
+        [_pixelBufferAdaptor appendPixelBuffer:pixelBuffer withPresentationTime:frameTime];
     }
 
     [self _calculateFrameRateWithCurrentFrameTime:frameTime];
     _previousFrameTime = _currentSampleTime = _lastSampleTime = frameTime;
-
-    //IMUTLogDebug(@"%lld, %d", frameTime.value, accepted);
-}
-
-- (void)captureOutput:(AVCaptureOutput *)captureOutput didDropSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
-    //CMTime frameTime = CMClockGetTime(_captureSession.masterClock);
-    //IMUTLogDebug(@"dropped sample at time: %lld", frameTime.value);
 }
 
 #pragma mark Private
@@ -120,11 +98,6 @@
 
         _targetFrameRate = targetFrameRate;
         _currentFrameRate = 0;
-
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(captureSessionError:)
-                                                     name:AVCaptureSessionRuntimeErrorNotification
-                                                   object:nil];
     }
 
     return self;
@@ -145,26 +118,10 @@
     });
 }
 
-- (void)_calculateFrameRateWithCurrentFrameTime:(CMTime)time; {
-    [_previousSecondTimestamps addObject:[NSValue valueWithCMTime:time]];
-
-    CMTime oneSecond = CMTimeMake(1, 1);
-    CMTime oneSecondAgo = CMTimeSubtract(time, oneSecond);
-
-    while (CMTIME_COMPARE_INLINE([[_previousSecondTimestamps objectAtIndex:0] CMTimeValue], <=, oneSecondAgo)) {
-        [_previousSecondTimestamps removeObjectAtIndex:0];
-    }
-
-    _currentFrameRate = (_currentFrameRate + [_previousSecondTimestamps count]) / 2.0;
-}
-
 - (void)_setupCapturingSession {
     // Gather the video settings and bufferPool attributes
     NSDictionary *videoSettings = [_delegate videoSettingsUsingDefaults:[self _defaultVideoSettings]];
     NSDictionary *bufferAttributes = [_delegate bufferAttributesUsingDefaults:[self _defaultBufferAttributes]];
-
-    // Initialize process vars, which haven't been initialized before
-    _previousSecondTimestamps = [NSMutableArray array];
 
     // Make the processing rendering queue
     _processingRenderingQueue = makeDispatchQueueWithTargetQueue(
@@ -210,13 +167,11 @@
                                                                                            sourcePixelBufferAttributes:bufferAttributes];
 
     // Setup the master timebase, which is backed by `mach_absolute_time`, the kernel's processor clock
-    OSStatus timebaseCreateStatus = CMTimebaseCreateWithMasterClock(
+    CMTimebaseCreateWithMasterClock(
         kCFAllocatorDefault,
         CMClockGetHostTimeClock(),
         &_currentTimebase
     );
-
-    NSAssert(timebaseCreateStatus == 0, @"Could not create timebase.");
 
     // Initialize the timebase
     CMTime now = CMTimeMake(0, 1000 * 1000);
@@ -265,15 +220,12 @@
     // Relinquish all process variables
     _writerInput = nil;
     _processingRenderingQueue = nil;
-    _previousSecondTimestamps = nil;
 
     [_writer mediaSourceDidStopProducingSamples:self lastSampleTime:_lastSampleTime];
 
     dispatch_group_wait(dispatchGroup, dispatch_time(DISPATCH_TIME_NOW, (uint64_t) (10.0 * NSEC_PER_SEC)));
-}
 
-- (void)captureSessionError:(NSNotification *)notification {
-    //NSAssert(false, @"Capture session error occured.");
+    [self _resetCalculatedFrameRate];
 }
 
 @end
